@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, ExternalLink, Maximize2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Maximize2 } from 'lucide-react';
 
 interface DashboardData {
   id: string;
@@ -117,24 +117,14 @@ export default function DashboardView() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={toggleFullscreen}
-              className="flex items-center gap-2"
-            >
-              <Maximize2 className="h-4 w-4" />
-              Tela cheia
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => window.open(dashboard.embed_url, '_blank')}
-              className="flex items-center gap-2"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Abrir em nova aba
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            onClick={toggleFullscreen}
+            className="flex items-center gap-2"
+          >
+            <Maximize2 className="h-4 w-4" />
+            Tela cheia
+          </Button>
         </div>
 
         {/* Dashboard Embed */}
