@@ -15,6 +15,7 @@ import DashboardView from "./pages/DashboardView";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminWorkspaces from "./pages/admin/AdminWorkspaces";
 import AdminDashboards from "./pages/admin/AdminDashboards";
+import AdminAccessProfiles from "./pages/admin/AdminAccessProfiles";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -85,6 +86,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute requireAdmin>
             <AdminDashboards />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/access-profiles" 
+        element={
+          <ProtectedRoute requireAdmin>
+            <AdminAccessProfiles />
           </ProtectedRoute>
         } 
       />

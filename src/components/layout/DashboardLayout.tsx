@@ -19,7 +19,8 @@ import {
   LogOut,
   Settings,
   Menu,
-  X
+  X,
+  ShieldCheck
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -55,6 +56,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       { href: '/admin/users', label: 'Usuários', icon: Users },
       { href: '/admin/workspaces', label: 'Workspaces', icon: FolderKanban },
       { href: '/admin/dashboards', label: 'Painéis', icon: FileBarChart },
+      { href: '/admin/access-profiles', label: 'Perfis de Acesso', icon: ShieldCheck },
     ] : []),
   ];
 

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/lib/auth';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, Maximize2 } from 'lucide-react';
@@ -12,9 +13,34 @@ interface DashboardData {
   embed_url: string;
 }
 
+function buildFilteredUrl(baseUrl: string, profile: any): string {
+  if (!profile?.access_profile) return baseUrl;
+
+  const { filter_level } = profile.access_profile;
+  if (filter_level === 'none') return baseUrl;
+
+  const filters: string[] = [];
+
+  if (profile.estado && ['estado', 'cidade', 'obra'].includes(filter_level)) {
+    filters.push(`Obras/Estado eq '${profile.estado}'`);
+  }
+  if (profile.cidade && ['cidade', 'obra'].includes(filter_level)) {
+    filters.push(`Obras/Cidade eq '${profile.cidade}'`);
+  }
+  if (profile.obra && filter_level === 'obra') {
+    filters.push(`Obras/NomeDaObra eq '${profile.obra}'`);
+  }
+
+  if (filters.length === 0) return baseUrl;
+
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${separator}filter=${filters.join(' and ')}`;
+}
+
 export default function DashboardView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -50,6 +76,11 @@ export default function DashboardView() {
     }
   };
 
+  const filteredUrl = useMemo(() => {
+    if (!dashboard) return '';
+    return buildFilteredUrl(dashboard.embed_url, profile);
+  }, [dashboard, profile]);
+
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
   };
@@ -82,7 +113,7 @@ export default function DashboardView() {
           </Button>
         </div>
         <iframe
-          src={dashboard.embed_url}
+          src={filteredUrl}
           className="w-full h-full border-0"
           allowFullScreen
           title={dashboard.name}
@@ -94,7 +125,6 @@ export default function DashboardView() {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <Button
@@ -127,11 +157,10 @@ export default function DashboardView() {
           </Button>
         </div>
 
-        {/* Dashboard Embed */}
         <div className="relative rounded-lg overflow-hidden border border-border shadow-card bg-card">
           <div className="aspect-video w-full">
             <iframe
-              src={dashboard.embed_url}
+              src={filteredUrl}
               className="w-full h-full border-0"
               allowFullScreen
               title={dashboard.name}

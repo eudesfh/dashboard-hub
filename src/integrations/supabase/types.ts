@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_profiles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          filter_level: string
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          filter_level?: string
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          filter_level?: string
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       dashboard_workspaces: {
         Row: {
           dashboard_id: string
@@ -79,33 +106,53 @@ export type Database = {
       }
       profiles: {
         Row: {
+          access_profile_id: string | null
+          cidade: string | null
           created_at: string | null
           email: string
+          estado: string | null
           full_name: string
           id: string
           is_active: boolean | null
+          obra: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          access_profile_id?: string | null
+          cidade?: string | null
           created_at?: string | null
           email: string
+          estado?: string | null
           full_name: string
           id?: string
           is_active?: boolean | null
+          obra?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          access_profile_id?: string | null
+          cidade?: string | null
           created_at?: string | null
           email?: string
+          estado?: string | null
           full_name?: string
           id?: string
           is_active?: boolean | null
+          obra?: string | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_access_profile_id_fkey"
+            columns: ["access_profile_id"]
+            isOneToOne: false
+            referencedRelation: "access_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

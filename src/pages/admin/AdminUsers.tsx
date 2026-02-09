@@ -31,8 +31,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Users, Shield, UserCheck, UserX, Plus, Search } from 'lucide-react';
+import { Loader2, Users, Shield, UserCheck, UserX, Plus, Search, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+
+interface AccessProfile {
+  id: string;
+  name: string;
+  filter_level: string;
+}
 
 interface User {
   id: string;
@@ -40,6 +46,11 @@ interface User {
   full_name: string;
   email: string;
   is_active: boolean;
+  estado: string | null;
+  cidade: string | null;
+  obra: string | null;
+  access_profile_id: string | null;
+  access_profile_name: string | null;
   role: 'admin' | 'user';
   workspaces: { id: string; name: string }[];
 }
@@ -54,11 +65,14 @@ export default function AdminUsers() {
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [accessProfiles, setAccessProfiles] = useState<AccessProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isWorkspaceDialogOpen, setIsWorkspaceDialogOpen] = useState(false);
+  const [isAccessProfileDialogOpen, setIsAccessProfileDialogOpen] = useState(false);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>('');
+  const [selectedAccessProfileId, setSelectedAccessProfileId] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
@@ -68,16 +82,10 @@ export default function AdminUsers() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch all profiles with their roles and workspaces
+      // Fetch all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select(`
-          id,
-          user_id,
-          full_name,
-          email,
-          is_active
-        `);
+        .select('id, user_id, full_name, email, is_active, estado, cidade, obra, access_profile_id');
 
       if (profilesError) throw profilesError;
 
@@ -91,10 +99,7 @@ export default function AdminUsers() {
       // Fetch user workspaces
       const { data: userWorkspaces, error: uwError } = await supabase
         .from('user_workspaces')
-        .select(`
-          user_id,
-          workspace:workspaces(id, name)
-        `);
+        .select(`user_id, workspace:workspaces(id, name)`);
 
       if (uwError) throw uwError;
 
@@ -105,15 +110,25 @@ export default function AdminUsers() {
 
       if (wsError) throw wsError;
 
+      // Fetch access profiles
+      const { data: apData, error: apError } = await supabase
+        .from('access_profiles')
+        .select('id, name, filter_level');
+
+      if (apError) throw apError;
+
       setWorkspaces(allWorkspaces || []);
+      setAccessProfiles(apData || []);
 
       // Combine data
       const combinedUsers = profiles?.map(profile => {
         const userRole = roles?.find(r => r.user_id === profile.user_id);
         const userWs = userWorkspaces?.filter(uw => uw.user_id === profile.user_id) || [];
+        const ap = apData?.find(a => a.id === profile.access_profile_id);
         
         return {
           ...profile,
+          access_profile_name: ap?.name || null,
           role: (userRole?.role as 'admin' | 'user') || 'user',
           workspaces: userWs.map((uw: any) => uw.workspace).filter(Boolean),
         };
@@ -297,6 +312,34 @@ export default function AdminUsers() {
     }
   };
 
+  const handleUpdateAccessProfile = async () => {
+    if (!selectedUser) return;
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ access_profile_id: selectedAccessProfileId || null })
+        .eq('user_id', selectedUser.user_id);
+
+      if (error) throw error;
+
+      const ap = accessProfiles.find(a => a.id === selectedAccessProfileId);
+      setUsers(users.map(u =>
+        u.user_id === selectedUser.user_id
+          ? { ...u, access_profile_id: selectedAccessProfileId || null, access_profile_name: ap?.name || null }
+          : u
+      ));
+
+      toast({ title: 'Perfil de acesso atualizado' });
+      setIsAccessProfileDialogOpen(false);
+    } catch (error) {
+      console.error('Error updating access profile:', error);
+      toast({ variant: 'destructive', title: 'Erro ao atualizar perfil de acesso' });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const filteredUsers = users.filter(user =>
     user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -346,10 +389,11 @@ export default function AdminUsers() {
         <Card>
           <CardContent className="p-0">
             <Table>
-              <TableHeader>
+               <TableHeader>
                 <TableRow>
                   <TableHead>Usuário</TableHead>
                   <TableHead>Papel</TableHead>
+                  <TableHead>Perfil de Acesso</TableHead>
                   <TableHead>Workspaces</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -362,6 +406,11 @@ export default function AdminUsers() {
                       <div>
                         <p className="font-medium">{user.full_name}</p>
                         <p className="text-sm text-muted-foreground">{user.email}</p>
+                        {user.obra && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {user.estado} / {user.cidade} / {user.obra}
+                          </p>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -371,6 +420,20 @@ export default function AdminUsers() {
                       >
                         <Shield className="h-3 w-3 mr-1" />
                         {user.role === 'admin' ? 'Admin' : 'Usuário'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className="cursor-pointer hover:bg-primary/10"
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setSelectedAccessProfileId(user.access_profile_id || '');
+                          setIsAccessProfileDialogOpen(true);
+                        }}
+                      >
+                        <ShieldCheck className="h-3 w-3 mr-1" />
+                        {user.access_profile_name || 'Definir'}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -479,6 +542,48 @@ export default function AdminUsers() {
               >
                 {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Adicionar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Access Profile Dialog */}
+        <Dialog open={isAccessProfileDialogOpen} onOpenChange={setIsAccessProfileDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Definir Perfil de Acesso</DialogTitle>
+              <DialogDescription>
+                Selecione o perfil de acesso para {selectedUser?.full_name}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Perfil de Acesso</Label>
+                <Select value={selectedAccessProfileId} onValueChange={setSelectedAccessProfileId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um perfil" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accessProfiles.map((ap) => (
+                      <SelectItem key={ap.id} value={ap.id}>
+                        {ap.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAccessProfileDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleUpdateAccessProfile}
+                disabled={isUpdating}
+                className="gradient-primary text-primary-foreground"
+              >
+                {isUpdating && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Salvar
               </Button>
             </DialogFooter>
           </DialogContent>
