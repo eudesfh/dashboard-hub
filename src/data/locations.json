@@ -1,0 +1,39 @@
+{
+  "estados": [
+    {
+      "nome": "Ceará",
+      "cidades": [
+        {
+          "nome": "Fortaleza",
+          "obras": ["Viaduto Central", "Ponte Rio Ceará", "Edifício Corporate"]
+        },
+        {
+          "nome": "Sobral",
+          "obras": ["Residencial Parque Norte"]
+        }
+      ]
+    },
+    {
+      "nome": "São Paulo",
+      "cidades": [
+        {
+          "nome": "São Paulo",
+          "obras": ["Torre Alpha", "Shopping Center Oeste"]
+        },
+        {
+          "nome": "Campinas",
+          "obras": ["Condomínio Vista Verde"]
+        }
+      ]
+    },
+    {
+      "nome": "Rio de Janeiro",
+      "cidades": [
+        {
+          "nome": "Rio de Janeiro",
+          "obras": ["Complexo Barra", "Edifício Atlântico"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Loader2, UserPlus } from 'lucide-react';
+import { LocationFields } from '@/components/register/LocationFields';
 import logo from '@/assets/logo.jfif';
 
 export default function Register() {
@@ -15,6 +16,9 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [estado, setEstado] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [obra, setObra] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -43,7 +47,7 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data: signUpData, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
@@ -69,6 +73,21 @@ export default function Register() {
           });
         }
         return;
+      }
+
+      // Update profile with location data after signup
+      if (signUpData.user) {
+        // Small delay to let the trigger create the profile first
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        await supabase
+          .from('profiles')
+          .update({
+            estado: estado || null,
+            cidade: cidade || null,
+            obra: obra || null,
+          })
+          .eq('user_id', signUpData.user.id);
       }
 
       toast({
@@ -136,6 +155,15 @@ export default function Register() {
                 className="transition-smooth focus:ring-2 focus:ring-primary/20"
               />
             </div>
+
+            <LocationFields
+              estado={estado}
+              cidade={cidade}
+              obra={obra}
+              onEstadoChange={setEstado}
+              onCidadeChange={setCidade}
+              onObraChange={setObra}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
