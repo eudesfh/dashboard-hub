@@ -32,10 +32,13 @@ function buildFilteredUrl(baseUrl: string, profile: any, filterTable: string | n
     filters.push(`${filterTable}/NomeDaObra eq '${profile.obra}'`);
   }
 
-  if (filters.length === 0) return baseUrl;
-
+  // Hide the filter pane for all dashboards
   const separator = baseUrl.includes('?') ? '&' : '?';
-  return `${baseUrl}${separator}filter=${filters.join(' and ')}`;
+  let url = `${baseUrl}${separator}filterPaneEnabled=false`;
+
+  if (filters.length === 0) return url;
+
+  return `${url}&filter=${filters.join(' and ')}`;
 }
 
 export default function DashboardView() {
