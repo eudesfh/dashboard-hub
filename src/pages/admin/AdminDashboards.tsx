@@ -58,6 +58,7 @@ export default function AdminDashboards() {
     name: '',
     description: '',
     embed_url: '',
+    filter_table: '',
     workspaceIds: [] as string[],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -150,6 +151,7 @@ export default function AdminDashboards() {
             name: formData.name.trim(),
             description: formData.description.trim() || null,
             embed_url: formData.embed_url.trim(),
+            filter_table: formData.filter_table.trim() || null,
           })
           .eq('id', selectedDashboard.id);
 
@@ -205,6 +207,7 @@ export default function AdminDashboards() {
             name: formData.name.trim(),
             description: formData.description.trim() || null,
             embed_url: formData.embed_url.trim(),
+            filter_table: formData.filter_table.trim() || null,
             created_by: user?.id,
           })
           .select()
@@ -293,6 +296,7 @@ export default function AdminDashboards() {
       name: dashboard.name,
       description: dashboard.description || '',
       embed_url: dashboard.embed_url,
+      filter_table: (dashboard as any).filter_table || '',
       workspaceIds: dashboard.workspaces.map(ws => ws.id),
     });
     setIsDialogOpen(true);
@@ -305,7 +309,7 @@ export default function AdminDashboards() {
 
   const resetForm = () => {
     setSelectedDashboard(null);
-    setFormData({ name: '', description: '', embed_url: '', workspaceIds: [] });
+    setFormData({ name: '', description: '', embed_url: '', filter_table: '', workspaceIds: [] });
   };
 
   const toggleWorkspace = (workspaceId: string) => {
@@ -390,6 +394,19 @@ export default function AdminDashboards() {
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Cole aqui o link público do seu relatório Power BI
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="filter_table">Tabela de Filtro (Power BI)</Label>
+                    <Input
+                      id="filter_table"
+                      value={formData.filter_table}
+                      onChange={(e) => setFormData({ ...formData, filter_table: e.target.value })}
+                      placeholder="Ex: fMedicao, Obras"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Nome da tabela do Power BI usada nos filtros de URL (ex: fMedicao/Estado eq 'Ceará')
                     </p>
                   </div>
 

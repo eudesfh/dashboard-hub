@@ -11,10 +11,11 @@ interface DashboardData {
   name: string;
   description: string | null;
   embed_url: string;
+  filter_table: string | null;
 }
 
-function buildFilteredUrl(baseUrl: string, profile: any): string {
-  if (!profile?.access_profile) return baseUrl;
+function buildFilteredUrl(baseUrl: string, profile: any, filterTable: string | null): string {
+  if (!profile?.access_profile || !filterTable) return baseUrl;
 
   const { filter_level } = profile.access_profile;
   if (filter_level === 'none') return baseUrl;
@@ -22,13 +23,13 @@ function buildFilteredUrl(baseUrl: string, profile: any): string {
   const filters: string[] = [];
 
   if (profile.estado && ['estado', 'cidade', 'obra'].includes(filter_level)) {
-    filters.push(`Obras/Estado eq '${profile.estado}'`);
+    filters.push(`${filterTable}/Estado eq '${profile.estado}'`);
   }
   if (profile.cidade && ['cidade', 'obra'].includes(filter_level)) {
-    filters.push(`Obras/Cidade eq '${profile.cidade}'`);
+    filters.push(`${filterTable}/Cidade eq '${profile.cidade}'`);
   }
   if (profile.obra && filter_level === 'obra') {
-    filters.push(`Obras/NomeDaObra eq '${profile.obra}'`);
+    filters.push(`${filterTable}/NomeDaObra eq '${profile.obra}'`);
   }
 
   if (filters.length === 0) return baseUrl;
@@ -56,7 +57,7 @@ export default function DashboardView() {
     try {
       const { data, error } = await supabase
         .from('dashboards')
-        .select('id, name, description, embed_url')
+        .select('id, name, description, embed_url, filter_table')
         .eq('id', id)
         .maybeSingle();
 
@@ -78,7 +79,7 @@ export default function DashboardView() {
 
   const filteredUrl = useMemo(() => {
     if (!dashboard) return '';
-    return buildFilteredUrl(dashboard.embed_url, profile);
+    return buildFilteredUrl(dashboard.embed_url, profile, dashboard.filter_table);
   }, [dashboard, profile]);
 
   const toggleFullscreen = () => {
