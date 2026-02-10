@@ -16,6 +16,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminWorkspaces from "./pages/admin/AdminWorkspaces";
 import AdminDashboards from "./pages/admin/AdminDashboards";
 import AdminAccessProfiles from "./pages/admin/AdminAccessProfiles";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,8 +64,14 @@ function AppRoutes() {
           </ProtectedRoute>
         } 
       />
-      
-      {/* Admin Routes */}
+      <Route 
+        path="/profile" 
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        } 
+      />
       <Route 
         path="/admin/users" 
         element={
