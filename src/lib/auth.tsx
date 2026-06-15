@@ -10,6 +10,7 @@ interface UserProfile {
   estado: string | null;
   cidade: string | null;
   obra: string | null;
+  obras: string[];
   access_profile_id: string | null;
   access_profile?: {
     id: string;
@@ -65,9 +66,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           estado: profileData.estado,
           cidade: profileData.cidade,
           obra: profileData.obra,
+          obras: (profileData as any).obras ?? [],
           access_profile_id: profileData.access_profile_id,
           access_profile: accessProfile,
         });
+      } else {
+        setProfile(null);
       }
 
       // Check if admin
@@ -91,29 +95,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         if (session?.user) {
-          setTimeout(() => fetchUserData(session.user.id), 0);
+          // Defer to avoid deadlock, then mark loading complete only AFTER
+          // role/profile have been resolved (prevents admin routes from
+          // redirecting because isAdmin was still false on first render).
+          setTimeout(async () => {
+            await fetchUserData(session.user.id);
+            setIsLoading(false);
+          }, 0);
         } else {
           setProfile(null);
           setIsAdmin(false);
+          setIsLoading(false);
         }
-        
-        setIsLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
       if (session?.user) {
-        fetchUserData(session.user.id);
+        await fetchUserData(session.user.id);
       }
-      
       setIsLoading(false);
     });
 

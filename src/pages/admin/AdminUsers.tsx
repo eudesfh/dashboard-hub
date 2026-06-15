@@ -4,7 +4,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -31,8 +31,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Users, Shield, UserCheck, UserX, Plus, Search, ShieldCheck } from 'lucide-react';
+import {
+  Loader2, Users, Shield, UserCheck, UserX, Plus, Search, ShieldCheck,
+  Pencil, Trash2, KeyRound,
+} from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { LocationFields } from '@/components/register/LocationFields';
 
 interface AccessProfile {
   id: string;
@@ -48,17 +52,34 @@ interface User {
   is_active: boolean;
   estado: string | null;
   cidade: string | null;
-  obra: string | null;
+  obras: string[];
   access_profile_id: string | null;
   access_profile_name: string | null;
   role: 'admin' | 'user';
   workspaces: { id: string; name: string }[];
 }
 
-interface Workspace {
-  id: string;
-  name: string;
-}
+interface Workspace { id: string; name: string }
+
+type EditorState = {
+  open: boolean;
+  mode: 'create' | 'edit';
+  user_id?: string;
+  full_name: string;
+  email: string;
+  password: string;
+  estado: string;
+  cidade: string;
+  obras: string[];
+  role: 'admin' | 'user';
+  is_active: boolean;
+};
+
+const emptyEditor: EditorState = {
+  open: false, mode: 'create',
+  full_name: '', email: '', password: '',
+  estado: '', cidade: '', obras: [], role: 'user', is_active: true,
+};
 
 export default function AdminUsers() {
   const { user: currentUser } = useAuth();
@@ -75,274 +96,214 @@ export default function AdminUsers() {
   const [selectedAccessProfileId, setSelectedAccessProfileId] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const [editor, setEditor] = useState<EditorState>(emptyEditor);
+  const [passwordDialog, setPasswordDialog] = useState<{ open: boolean; user?: User; password: string }>({ open: false, password: '' });
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; user?: User }>({ open: false });
+
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, user_id, full_name, email, is_active, estado, cidade, obra, access_profile_id');
-
+        .select('id, user_id, full_name, email, is_active, estado, cidade, obra, obras, access_profile_id');
       if (profilesError) throw profilesError;
 
-      // Fetch roles
-      const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-
+      const { data: roles, error: rolesError } = await supabase.from('user_roles').select('user_id, role');
       if (rolesError) throw rolesError;
 
-      // Fetch user workspaces
       const { data: userWorkspaces, error: uwError } = await supabase
         .from('user_workspaces')
         .select(`user_id, workspace:workspaces(id, name)`);
-
       if (uwError) throw uwError;
 
-      // Fetch all workspaces
-      const { data: allWorkspaces, error: wsError } = await supabase
-        .from('workspaces')
-        .select('id, name');
-
+      const { data: allWorkspaces, error: wsError } = await supabase.from('workspaces').select('id, name');
       if (wsError) throw wsError;
 
-      // Fetch access profiles
-      const { data: apData, error: apError } = await supabase
-        .from('access_profiles')
-        .select('id, name, filter_level');
-
+      const { data: apData, error: apError } = await supabase.from('access_profiles').select('id, name, filter_level');
       if (apError) throw apError;
 
       setWorkspaces(allWorkspaces || []);
       setAccessProfiles(apData || []);
 
-      // Combine data
-      const combinedUsers = profiles?.map(profile => {
-        const userRole = roles?.find(r => r.user_id === profile.user_id);
-        const userWs = userWorkspaces?.filter(uw => uw.user_id === profile.user_id) || [];
-        const ap = apData?.find(a => a.id === profile.access_profile_id);
-        
+      const combinedUsers: User[] = (profiles || []).map((profile: any) => {
+        const userRole = roles?.find((r) => r.user_id === profile.user_id);
+        const userWs = userWorkspaces?.filter((uw: any) => uw.user_id === profile.user_id) || [];
+        const ap = apData?.find((a) => a.id === profile.access_profile_id);
+        const obrasArr: string[] = Array.isArray(profile.obras) && profile.obras.length
+          ? profile.obras
+          : (profile.obra ? [profile.obra] : []);
         return {
-          ...profile,
+          id: profile.id,
+          user_id: profile.user_id,
+          full_name: profile.full_name,
+          email: profile.email,
+          is_active: profile.is_active ?? true,
+          estado: profile.estado,
+          cidade: profile.cidade,
+          obras: obrasArr,
+          access_profile_id: profile.access_profile_id,
           access_profile_name: ap?.name || null,
           role: (userRole?.role as 'admin' | 'user') || 'user',
           workspaces: userWs.map((uw: any) => uw.workspace).filter(Boolean),
         };
-      }) || [];
+      });
 
       setUsers(combinedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao carregar usuários',
-        description: 'Tente novamente mais tarde.',
-      });
+      toast({ variant: 'destructive', title: 'Erro ao carregar usuários' });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleToggleActive = async (user: User) => {
-    if (user.user_id === currentUser?.id) {
-      toast({
-        variant: 'destructive',
-        title: 'Ação não permitida',
-        description: 'Você não pode desativar sua própria conta.',
-      });
-      return;
-    }
-
-    setIsUpdating(true);
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_active: !user.is_active })
-        .eq('user_id', user.user_id);
-
-      if (error) throw error;
-
-      setUsers(users.map(u => 
-        u.user_id === user.user_id 
-          ? { ...u, is_active: !u.is_active }
-          : u
-      ));
-
-      toast({
-        title: user.is_active ? 'Usuário desativado' : 'Usuário ativado',
-        description: `${user.full_name} foi ${user.is_active ? 'desativado' : 'ativado'} com sucesso.`,
-      });
-    } catch (error) {
-      console.error('Error updating user:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao atualizar usuário',
-        description: 'Tente novamente mais tarde.',
-      });
-    } finally {
-      setIsUpdating(false);
-    }
+  const callAdmin = async (body: any) => {
+    const { data, error } = await supabase.functions.invoke('admin-users', { body });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data;
   };
 
-  const handleToggleAdmin = async (user: User) => {
+  const handleToggleActive = async (user: User) => {
     if (user.user_id === currentUser?.id) {
-      toast({
-        variant: 'destructive',
-        title: 'Ação não permitida',
-        description: 'Você não pode alterar seu próprio papel.',
-      });
+      toast({ variant: 'destructive', title: 'Você não pode desativar sua própria conta.' });
       return;
     }
-
     setIsUpdating(true);
     try {
-      const newRole = user.role === 'admin' ? 'user' : 'admin';
-      
-      const { error } = await supabase
-        .from('user_roles')
-        .update({ role: newRole })
-        .eq('user_id', user.user_id);
-
-      if (error) throw error;
-
-      setUsers(users.map(u => 
-        u.user_id === user.user_id 
-          ? { ...u, role: newRole }
-          : u
-      ));
-
-      toast({
-        title: 'Papel atualizado',
-        description: `${user.full_name} agora é ${newRole === 'admin' ? 'Administrador' : 'Usuário'}.`,
-      });
-    } catch (error) {
-      console.error('Error updating role:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao atualizar papel',
-        description: 'Tente novamente mais tarde.',
-      });
-    } finally {
-      setIsUpdating(false);
-    }
+      await callAdmin({ action: 'update', user_id: user.user_id, is_active: !user.is_active });
+      setUsers(users.map(u => u.user_id === user.user_id ? { ...u, is_active: !u.is_active } : u));
+      toast({ title: user.is_active ? 'Usuário desativado' : 'Usuário ativado' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: e.message });
+    } finally { setIsUpdating(false); }
   };
 
   const handleAddToWorkspace = async () => {
     if (!selectedUser || !selectedWorkspaceId) return;
-
     setIsUpdating(true);
     try {
-      const { error } = await supabase
-        .from('user_workspaces')
-        .insert({
-          user_id: selectedUser.user_id,
-          workspace_id: selectedWorkspaceId,
-        });
-
+      const { error } = await supabase.from('user_workspaces').insert({
+        user_id: selectedUser.user_id, workspace_id: selectedWorkspaceId,
+      });
       if (error) {
-        if (error.code === '23505') {
-          toast({
-            variant: 'destructive',
-            title: 'Usuário já pertence a este workspace',
-          });
-          return;
-        }
+        if (error.code === '23505') { toast({ variant: 'destructive', title: 'Usuário já pertence a este workspace' }); return; }
         throw error;
       }
-
       const workspace = workspaces.find(w => w.id === selectedWorkspaceId);
-      
-      setUsers(users.map(u => 
-        u.user_id === selectedUser.user_id 
-          ? { ...u, workspaces: [...u.workspaces, workspace!] }
-          : u
-      ));
-
-      toast({
-        title: 'Usuário adicionado ao workspace',
-        description: `${selectedUser.full_name} foi adicionado a ${workspace?.name}.`,
-      });
-
+      setUsers(users.map(u => u.user_id === selectedUser.user_id ? { ...u, workspaces: [...u.workspaces, workspace!] } : u));
+      toast({ title: 'Usuário adicionado ao workspace' });
       setIsWorkspaceDialogOpen(false);
       setSelectedWorkspaceId('');
-    } catch (error) {
-      console.error('Error adding to workspace:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao adicionar ao workspace',
-        description: 'Tente novamente mais tarde.',
-      });
-    } finally {
-      setIsUpdating(false);
-    }
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: e.message });
+    } finally { setIsUpdating(false); }
   };
 
   const handleRemoveFromWorkspace = async (user: User, workspaceId: string) => {
     setIsUpdating(true);
     try {
-      const { error } = await supabase
-        .from('user_workspaces')
-        .delete()
-        .eq('user_id', user.user_id)
-        .eq('workspace_id', workspaceId);
-
+      const { error } = await supabase.from('user_workspaces').delete()
+        .eq('user_id', user.user_id).eq('workspace_id', workspaceId);
       if (error) throw error;
-
-      setUsers(users.map(u => 
-        u.user_id === user.user_id 
-          ? { ...u, workspaces: u.workspaces.filter(w => w.id !== workspaceId) }
-          : u
-      ));
-
-      toast({
-        title: 'Usuário removido do workspace',
-      });
-    } catch (error) {
-      console.error('Error removing from workspace:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao remover do workspace',
-      });
-    } finally {
-      setIsUpdating(false);
-    }
+      setUsers(users.map(u => u.user_id === user.user_id ? { ...u, workspaces: u.workspaces.filter(w => w.id !== workspaceId) } : u));
+      toast({ title: 'Removido do workspace' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: e.message });
+    } finally { setIsUpdating(false); }
   };
 
   const handleUpdateAccessProfile = async () => {
     if (!selectedUser) return;
     setIsUpdating(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
+      const { error } = await supabase.from('profiles')
         .update({ access_profile_id: selectedAccessProfileId || null })
         .eq('user_id', selectedUser.user_id);
-
       if (error) throw error;
-
       const ap = accessProfiles.find(a => a.id === selectedAccessProfileId);
-      setUsers(users.map(u =>
-        u.user_id === selectedUser.user_id
-          ? { ...u, access_profile_id: selectedAccessProfileId || null, access_profile_name: ap?.name || null }
-          : u
-      ));
-
+      setUsers(users.map(u => u.user_id === selectedUser.user_id
+        ? { ...u, access_profile_id: selectedAccessProfileId || null, access_profile_name: ap?.name || null } : u));
       toast({ title: 'Perfil de acesso atualizado' });
       setIsAccessProfileDialogOpen(false);
-    } catch (error) {
-      console.error('Error updating access profile:', error);
-      toast({ variant: 'destructive', title: 'Erro ao atualizar perfil de acesso' });
-    } finally {
-      setIsUpdating(false);
-    }
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: e.message });
+    } finally { setIsUpdating(false); }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const openCreate = () => setEditor({ ...emptyEditor, open: true, mode: 'create' });
+  const openEdit = (u: User) => setEditor({
+    open: true, mode: 'edit', user_id: u.user_id,
+    full_name: u.full_name, email: u.email, password: '',
+    estado: u.estado || '', cidade: u.cidade || '', obras: u.obras,
+    role: u.role, is_active: u.is_active,
+  });
+
+  const submitEditor = async () => {
+    if (!editor.full_name || !editor.email) {
+      toast({ variant: 'destructive', title: 'Nome e email são obrigatórios' }); return;
+    }
+    if (editor.mode === 'create' && editor.password.length < 6) {
+      toast({ variant: 'destructive', title: 'Senha deve ter pelo menos 6 caracteres' }); return;
+    }
+    setIsUpdating(true);
+    try {
+      if (editor.mode === 'create') {
+        await callAdmin({
+          action: 'create', email: editor.email, password: editor.password,
+          full_name: editor.full_name, estado: editor.estado || null,
+          cidade: editor.cidade || null, obras: editor.obras, role: editor.role,
+          is_active: editor.is_active,
+        });
+        toast({ title: 'Usuário criado' });
+      } else {
+        await callAdmin({
+          action: 'update', user_id: editor.user_id,
+          full_name: editor.full_name, email: editor.email,
+          estado: editor.estado || null, cidade: editor.cidade || null,
+          obras: editor.obras, role: editor.role, is_active: editor.is_active,
+        });
+        toast({ title: 'Usuário atualizado' });
+      }
+      setEditor(emptyEditor);
+      await fetchData();
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: e.message });
+    } finally { setIsUpdating(false); }
+  };
+
+  const submitPassword = async () => {
+    if (!passwordDialog.user || passwordDialog.password.length < 6) {
+      toast({ variant: 'destructive', title: 'Senha deve ter pelo menos 6 caracteres' }); return;
+    }
+    setIsUpdating(true);
+    try {
+      await callAdmin({ action: 'set_password', user_id: passwordDialog.user.user_id, password: passwordDialog.password });
+      toast({ title: 'Senha alterada com sucesso' });
+      setPasswordDialog({ open: false, password: '' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: e.message });
+    } finally { setIsUpdating(false); }
+  };
+
+  const submitDelete = async () => {
+    if (!deleteDialog.user) return;
+    setIsUpdating(true);
+    try {
+      await callAdmin({ action: 'delete', user_id: deleteDialog.user.user_id });
+      toast({ title: 'Usuário excluído' });
+      setDeleteDialog({ open: false });
+      await fetchData();
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: e.message });
+    } finally { setIsUpdating(false); }
+  };
+
+  const filteredUsers = users.filter(u =>
+    u.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (isLoading) {
@@ -358,38 +319,32 @@ export default function AdminUsers() {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold text-foreground">
-              Gerenciar Usuários
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Gerencie o acesso e permissões dos usuários
-            </p>
+            <h1 className="text-3xl font-display font-bold text-foreground">Gerenciar Usuários</h1>
+            <p className="text-muted-foreground mt-1">Crie, edite e gerencie todas as contas</p>
           </div>
-          <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
-            <Users className="h-5 w-5 text-muted-foreground" />
-            <span className="font-medium">{users.length} usuários</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
+              <Users className="h-5 w-5 text-muted-foreground" />
+              <span className="font-medium">{users.length}</span>
+            </div>
+            <Button onClick={openCreate} className="gradient-primary text-primary-foreground">
+              <Plus className="h-4 w-4 mr-2" /> Novo usuário
+            </Button>
           </div>
         </div>
 
-        {/* Search */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome ou email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+          <Input placeholder="Buscar por nome ou email..." value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
         </div>
 
-        {/* Users Table */}
         <Card>
-          <CardContent className="p-0">
+          <CardContent className="p-0 overflow-x-auto">
             <Table>
-               <TableHeader>
+              <TableHeader>
                 <TableRow>
                   <TableHead>Usuário</TableHead>
                   <TableHead>Papel</TableHead>
@@ -403,35 +358,29 @@ export default function AdminUsers() {
                 {filteredUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{user.full_name}</p>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
-                        {user.obra && (
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {user.estado} / {user.cidade} / {user.obra}
-                          </p>
-                        )}
-                      </div>
+                      <p className="font-medium">{user.full_name}</p>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                      {(user.estado || user.cidade || user.obras.length > 0) && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {[user.estado, user.cidade].filter(Boolean).join(' / ')}
+                          {user.obras.length > 0 && ` • ${user.obras.length} obra${user.obras.length === 1 ? '' : 's'}`}
+                        </p>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <Badge 
-                        variant={user.role === 'admin' ? 'default' : 'secondary'}
-                        className={user.role === 'admin' ? 'bg-primary' : ''}
-                      >
+                      <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}
+                        className={user.role === 'admin' ? 'bg-primary' : ''}>
                         <Shield className="h-3 w-3 mr-1" />
                         {user.role === 'admin' ? 'Admin' : 'Usuário'}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className="cursor-pointer hover:bg-primary/10"
+                      <Badge variant="outline" className="cursor-pointer hover:bg-primary/10"
                         onClick={() => {
                           setSelectedUser(user);
                           setSelectedAccessProfileId(user.access_profile_id || '');
                           setIsAccessProfileDialogOpen(true);
-                        }}
-                      >
+                        }}>
                         <ShieldCheck className="h-3 w-3 mr-1" />
                         {user.access_profile_name || 'Definir'}
                       </Badge>
@@ -440,60 +389,40 @@ export default function AdminUsers() {
                       <div className="flex flex-wrap gap-1 max-w-xs">
                         {user.workspaces.length === 0 ? (
                           <span className="text-sm text-muted-foreground">Nenhum</span>
-                        ) : (
-                          user.workspaces.map((ws) => (
-                            <Badge 
-                              key={ws.id} 
-                              variant="outline" 
-                              className="text-xs cursor-pointer hover:bg-destructive/10 hover:border-destructive"
-                              onClick={() => handleRemoveFromWorkspace(user, ws.id)}
-                              title="Clique para remover"
-                            >
-                              {ws.name} ×
-                            </Badge>
-                          ))
-                        )}
+                        ) : user.workspaces.map((ws) => (
+                          <Badge key={ws.id} variant="outline"
+                            className="text-xs cursor-pointer hover:bg-destructive/10 hover:border-destructive"
+                            onClick={() => handleRemoveFromWorkspace(user, ws.id)}
+                            title="Clique para remover">{ws.name} ×</Badge>
+                        ))}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {user.is_active ? (
-                          <UserCheck className="h-4 w-4 text-success" />
-                        ) : (
-                          <UserX className="h-4 w-4 text-destructive" />
-                        )}
-                        <span className={user.is_active ? 'text-success' : 'text-destructive'}>
-                          {user.is_active ? 'Ativo' : 'Inativo'}
-                        </span>
+                        {user.is_active
+                          ? <UserCheck className="h-4 w-4 text-success" />
+                          : <UserX className="h-4 w-4 text-destructive" />}
+                        <Switch checked={user.is_active}
+                          onCheckedChange={() => handleToggleActive(user)}
+                          disabled={isUpdating || user.user_id === currentUser?.id} />
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setIsWorkspaceDialogOpen(true);
-                          }}
-                          disabled={isUpdating}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Workspace
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setIsWorkspaceDialogOpen(true); }}>
+                          <Plus className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant={user.role === 'admin' ? 'secondary' : 'outline'}
-                          size="sm"
-                          onClick={() => handleToggleAdmin(user)}
-                          disabled={isUpdating || user.user_id === currentUser?.id}
-                        >
-                          {user.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(user)} title="Editar">
+                          <Pencil className="h-4 w-4" />
                         </Button>
-                        <Switch
-                          checked={user.is_active}
-                          onCheckedChange={() => handleToggleActive(user)}
-                          disabled={isUpdating || user.user_id === currentUser?.id}
-                        />
+                        <Button variant="ghost" size="sm" onClick={() => setPasswordDialog({ open: true, user, password: '' })} title="Alterar senha">
+                          <KeyRound className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setDeleteDialog({ open: true, user })}
+                          disabled={user.user_id === currentUser?.id}
+                          className="text-destructive hover:text-destructive" title="Excluir">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -502,93 +431,138 @@ export default function AdminUsers() {
             </Table>
           </CardContent>
         </Card>
-
-        {/* Add to Workspace Dialog */}
-        <Dialog open={isWorkspaceDialogOpen} onOpenChange={setIsWorkspaceDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Adicionar ao Workspace</DialogTitle>
-              <DialogDescription>
-                Selecione o workspace para adicionar {selectedUser?.full_name}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Workspace</Label>
-                <Select value={selectedWorkspaceId} onValueChange={setSelectedWorkspaceId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um workspace" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {workspaces
-                      .filter(ws => !selectedUser?.workspaces.some(uw => uw.id === ws.id))
-                      .map((ws) => (
-                        <SelectItem key={ws.id} value={ws.id}>
-                          {ws.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsWorkspaceDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button 
-                onClick={handleAddToWorkspace} 
-                disabled={!selectedWorkspaceId || isUpdating}
-                className="gradient-primary text-primary-foreground"
-              >
-                {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Adicionar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Access Profile Dialog */}
-        <Dialog open={isAccessProfileDialogOpen} onOpenChange={setIsAccessProfileDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Definir Perfil de Acesso</DialogTitle>
-              <DialogDescription>
-                Selecione o perfil de acesso para {selectedUser?.full_name}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Perfil de Acesso</Label>
-                <Select value={selectedAccessProfileId} onValueChange={setSelectedAccessProfileId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um perfil" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accessProfiles.map((ap) => (
-                      <SelectItem key={ap.id} value={ap.id}>
-                        {ap.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAccessProfileDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleUpdateAccessProfile}
-                disabled={isUpdating}
-                className="gradient-primary text-primary-foreground"
-              >
-                {isUpdating && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Salvar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      {/* Add to workspace dialog */}
+      <Dialog open={isWorkspaceDialogOpen} onOpenChange={setIsWorkspaceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar ao Workspace</DialogTitle>
+            <DialogDescription>{selectedUser?.full_name}</DialogDescription>
+          </DialogHeader>
+          <Select value={selectedWorkspaceId} onValueChange={setSelectedWorkspaceId}>
+            <SelectTrigger><SelectValue placeholder="Selecione o workspace" /></SelectTrigger>
+            <SelectContent>
+              {workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsWorkspaceDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleAddToWorkspace} disabled={isUpdating || !selectedWorkspaceId}>Adicionar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Access profile dialog */}
+      <Dialog open={isAccessProfileDialogOpen} onOpenChange={setIsAccessProfileDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Perfil de Acesso</DialogTitle>
+            <DialogDescription>{selectedUser?.full_name}</DialogDescription>
+          </DialogHeader>
+          <Select value={selectedAccessProfileId} onValueChange={setSelectedAccessProfileId}>
+            <SelectTrigger><SelectValue placeholder="Selecione o perfil" /></SelectTrigger>
+            <SelectContent>
+              {accessProfiles.map(ap => <SelectItem key={ap.id} value={ap.id}>{ap.name} ({ap.filter_level})</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAccessProfileDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleUpdateAccessProfile} disabled={isUpdating}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Editor (create/edit) */}
+      <Dialog open={editor.open} onOpenChange={(o) => !o && setEditor(emptyEditor)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editor.mode === 'create' ? 'Novo Usuário' : 'Editar Usuário'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome completo</Label>
+              <Input value={editor.full_name} onChange={(e) => setEditor({ ...editor, full_name: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input type="email" value={editor.email} onChange={(e) => setEditor({ ...editor, email: e.target.value })} />
+            </div>
+            {editor.mode === 'create' && (
+              <div className="space-y-2">
+                <Label>Senha (mín. 6 caracteres)</Label>
+                <Input type="password" value={editor.password}
+                  onChange={(e) => setEditor({ ...editor, password: e.target.value })} />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Papel</Label>
+              <Select value={editor.role} onValueChange={(v: 'admin' | 'user') => setEditor({ ...editor, role: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">Usuário</SelectItem>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Conta ativa</Label>
+              <Switch checked={editor.is_active}
+                onCheckedChange={(c) => setEditor({ ...editor, is_active: c })} />
+            </div>
+            <LocationFields
+              estado={editor.estado}
+              cidade={editor.cidade}
+              obras={editor.obras}
+              onEstadoChange={(v) => setEditor({ ...editor, estado: v })}
+              onCidadeChange={(v) => setEditor({ ...editor, cidade: v })}
+              onObrasChange={(v) => setEditor({ ...editor, obras: v })}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditor(emptyEditor)}>Cancelar</Button>
+            <Button onClick={submitEditor} disabled={isUpdating}>
+              {isUpdating && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {editor.mode === 'create' ? 'Criar' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Password dialog */}
+      <Dialog open={passwordDialog.open} onOpenChange={(o) => !o && setPasswordDialog({ open: false, password: '' })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar Senha</DialogTitle>
+            <DialogDescription>{passwordDialog.user?.full_name} ({passwordDialog.user?.email})</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Nova senha (mín. 6 caracteres)</Label>
+            <Input type="password" value={passwordDialog.password}
+              onChange={(e) => setPasswordDialog({ ...passwordDialog, password: e.target.value })} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPasswordDialog({ open: false, password: '' })}>Cancelar</Button>
+            <Button onClick={submitPassword} disabled={isUpdating}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete dialog */}
+      <Dialog open={deleteDialog.open} onOpenChange={(o) => !o && setDeleteDialog({ open: false })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir usuário?</DialogTitle>
+            <DialogDescription>
+              Esta ação é permanente. {deleteDialog.user?.full_name} ({deleteDialog.user?.email}) perderá o acesso imediatamente.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialog({ open: false })}>Cancelar</Button>
+            <Button variant="destructive" onClick={submitDelete} disabled={isUpdating}>Excluir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

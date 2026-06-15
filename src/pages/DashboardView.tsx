@@ -15,10 +15,14 @@ interface DashboardData {
 }
 
 function buildFilteredUrl(baseUrl: string, profile: any, filterTable: string | null): string {
-  if (!profile?.access_profile || !filterTable) return baseUrl;
+  // Sempre esconder o painel de filtros, independentemente de filtros aplicados
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  let url = `${baseUrl}${separator}filterPaneEnabled=false`;
+
+  if (!profile?.access_profile || !filterTable) return url;
 
   const { filter_level } = profile.access_profile;
-  if (filter_level === 'none') return baseUrl;
+  if (filter_level === 'none') return url;
 
   const filters: string[] = [];
 
@@ -28,17 +32,18 @@ function buildFilteredUrl(baseUrl: string, profile: any, filterTable: string | n
   if (profile.cidade && ['cidade', 'obra'].includes(filter_level)) {
     filters.push(`${filterTable}/Cidade eq '${profile.cidade}'`);
   }
-  if (profile.obra && filter_level === 'obra') {
-    filters.push(`${filterTable}/NomeDaObra eq '${profile.obra}'`);
+  if (filter_level === 'obra') {
+    const obras: string[] = (profile.obras && profile.obras.length ? profile.obras : (profile.obra ? [profile.obra] : []));
+    if (obras.length === 1) {
+      filters.push(`${filterTable}/NomeDaObra eq '${obras[0]}'`);
+    } else if (obras.length > 1) {
+      const list = obras.map((o) => `'${o.replace(/'/g, "''")}'`).join(', ');
+      filters.push(`${filterTable}/NomeDaObra in (${list})`);
+    }
   }
 
-  // Hide the filter pane for all dashboards
-  const separator = baseUrl.includes('?') ? '&' : '?';
-  let url = `${baseUrl}${separator}filterPaneEnabled=false`;
-
   if (filters.length === 0) return url;
-
-  return `${url}&filter=${filters.join(' and ')}`;
+  return `${url}&$filter=${encodeURIComponent(filters.join(' and '))}`;
 }
 
 export default function DashboardView() {

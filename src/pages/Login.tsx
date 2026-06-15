@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -145,14 +145,8 @@ export default function Login() {
               )}
             </Button>
 
-            <p className="text-sm text-center text-muted-foreground">
-              Não tem uma conta?{' '}
-              <Link 
-                to="/register" 
-                className="text-primary hover:underline font-medium transition-colors"
-              >
-                Cadastre-se
-              </Link>
+            <p className="text-xs text-center text-muted-foreground">
+              Apenas administradores criam novos usuários. Entre em contato com o administrador caso ainda não tenha acesso.
             </p>
           </CardFooter>
         </form>
