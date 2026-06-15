@@ -145,14 +145,8 @@ export default function Login() {
               )}
             </Button>
 
-            <p className="text-sm text-center text-muted-foreground">
-              Não tem uma conta?{' '}
-              <Link 
-                to="/register" 
-                className="text-primary hover:underline font-medium transition-colors"
-              >
-                Cadastre-se
-              </Link>
+            <p className="text-xs text-center text-muted-foreground">
+              Apenas administradores criam novos usuários. Entre em contato com o administrador caso ainda não tenha acesso.
             </p>
           </CardFooter>
         </form>

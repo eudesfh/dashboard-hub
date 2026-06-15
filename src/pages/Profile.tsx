@@ -13,25 +13,23 @@ export default function Profile() {
   const { toast } = useToast();
   const [estado, setEstado] = useState(profile?.estado || '');
   const [cidade, setCidade] = useState(profile?.cidade || '');
-  const [obra, setObra] = useState(profile?.obra || '');
+  const [obras, setObras] = useState<string[]>(profile?.obras || []);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
     if (!profile) return;
     setIsSaving(true);
-
     try {
       const { error } = await supabase
         .from('profiles')
         .update({
           estado: estado || null,
           cidade: cidade || null,
-          obra: obra || null,
-        })
+          obras,
+          obra: obras[0] ?? null,
+        } as any)
         .eq('id', profile.id);
-
       if (error) throw error;
-
       await refreshProfile();
       toast({ title: 'Perfil atualizado com sucesso!' });
     } catch (error) {
@@ -47,7 +45,7 @@ export default function Profile() {
       <div className="max-w-lg mx-auto space-y-6 animate-fade-in">
         <div>
           <h1 className="text-2xl font-display font-bold text-foreground">Meu Perfil</h1>
-          <p className="text-muted-foreground mt-1">Atualize sua localização e obra</p>
+          <p className="text-muted-foreground mt-1">Atualize sua localização e obras</p>
         </div>
 
         <Card>
@@ -61,10 +59,10 @@ export default function Profile() {
             <LocationFields
               estado={estado}
               cidade={cidade}
-              obra={obra}
+              obras={obras}
               onEstadoChange={setEstado}
               onCidadeChange={setCidade}
-              onObraChange={setObra}
+              onObrasChange={setObras}
             />
 
             <Button
