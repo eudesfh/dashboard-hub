@@ -4,12 +4,315 @@
       "nome": "Ceará",
       "cidades": [
         {
+          "nome": "Caucaia",
+          "obras": [
+            "ICARAÍ VILLAGE SOL - OBRA",
+            "OBRAS PARTICULARES"
+          ]
+        },
+        {
+          "nome": "Eusébio",
+          "obras": [
+            "PONTE ESTRADA DO FIO - EUSEBIO/CE"
+          ]
+        },
+        {
           "nome": "Fortaleza",
-          "obras": ["Viaduto Central", "Ponte Rio Ceará", "Edifício Corporate"]
+          "obras": [
+            "IFCE MESSEJANA",
+            "CEI MONDUBIM",
+            "REFORMA ETI ADEMAR NUNES",
+            "REFORMA MERCADO SÃO SEBASTIÃO",
+            "REFORMA MERCADO CARLITO PAMPLONA",
+            "REFORMA IFCE - SÃO GERARDO",
+            "MANUTENÇÃO SEINF - CONTRATO 14/2021",
+            "MANUTENÇÃO SEINF - CONTRATO 21/2021",
+            "MANUTENÇÃO SME - CONTRATO 113/2021",
+            "COBERTAS DO GATE - DOCAS DO CEARA 2 (CONSÓRCIO)",
+            "ESCOLA ARENINHA",
+            "QUADRA POLIESPORTIVA - SANTA MARIA",
+            "REFORMA DO 8º PAVIMENTO DO EDIFÍCIO-SEDE - JUSTIÇA FEDERAL",
+            "CEI JANGURUSSU II - JOSÉ EUCLIDES",
+            "UBS CIDADE JARDIM",
+            "CEI AUTRAN NUNES",
+            "CEI CONJUNTO CEARÁ I",
+            "CEI PARANGABA",
+            "PONTE NA RUA MANAUS",
+            "REQUALIFICAÇÃO DA ARENINHA CAMPO DO INTER",
+            "CRECHE PIRAMBU",
+            "ESCOLA ENSINO FUNDAMENTAL CIDADE JARDIM",
+            "UBS PEDRO CELESTINO",
+            "GINASIO PARANGABA",
+            "REFORMA DA PONTE DOS INGLESES",
+            "REFORMA DA COBERTA METALICA DO GINASIO POLIESPORTIVO PARANGA",
+            "ESCRITORIO - SEDE",
+            "REFORMA E REQUALIFICACAO DE 15 QUINZE ESPACOS PUBLICOS LT 1",
+            "CASTELOS D AGUA"
+          ]
+        },
+        {
+          "nome": "Horizonte",
+          "obras": [
+            "CENTRO DE PARTO - HORIZONTE",
+            "PRAÇA CASTELO BRANCO - HORIZONTE",
+            "UBS II - HORIZONTE",
+            "SECRETARIA DE SAUDE - HORIZONTE",
+            "UBS - HORIZONTE",
+            "EMEF MARIA LUIZA BARBOSA CHAVES - HORIZONTE",
+            "CENTRO DE IMAGEM - HORIZONTE",
+            "CENTRO INTEGRADO DE SEGURANCA - HORIZONTE"
+          ]
+        },
+        {
+          "nome": "Iguatu",
+          "obras": [
+            "UNISEG - IGUATU"
+          ]
+        },
+        {
+          "nome": "Itaitinga",
+          "obras": [
+            "FUNDO DE PREVIDENCIA - ITAITINGA"
+          ]
+        },
+        {
+          "nome": "Juazeiro do Norte",
+          "obras": [
+            "EMEI IRMA NELI SOBREIRA - JUAZEIRO DO NORTE",
+            "GINASIO POLIESPORTIVO - JUAZEIRO DO NORTE"
+          ]
+        },
+        {
+          "nome": "Quixada",
+          "obras": [
+            "UNISEG - QUIXADA"
+          ]
         },
         {
           "nome": "Sobral",
-          "obras": ["Residencial Parque Norte"]
+          "obras": [
+            "ETI TAMARINDO - SOBRAL",
+            "ETI SUMARÉ - SOBRAL",
+            "REFORMA NO MERCADO DE SOBRAL",
+            "CENTRO DE CONVENÇÕES DE SOBRAL",
+            "GINASIO POLIESPORTIVO PLINIO POMPEU - SOBRAL",
+            "RESTAURO DA IGREJA DE NOSSA SENHORA DAS DORES - SOBRAL"
+          ]
+        },
+        {
+          "nome": "São Gonçalo do Amarante",
+          "obras": [
+            "CENTRO DE EMERGÊNCIA PORTO DO PECÉM - SAO GONÇALO"
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Minas Gerais",
+      "cidades": [
+        {
+          "nome": "Caratinga",
+          "obras": [
+            "IFMG"
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Paraíba",
+      "cidades": [
+        {
+          "nome": "João Pessoa",
+          "obras": [
+            "CONSTRUÇÃO DAS CRECHES PROINFÂNCIA - BAIRROS DO CRISTO",
+            "CONSTRUÇÃO DAS CRECHES PROINFÂNCIA - FUNCIONARIOS IV",
+            "CONSTRUÇÃO DAS CRECHES PROINFÂNCIA - VISTA ALEGRE"
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Pernambuco",
+      "cidades": [
+        {
+          "nome": "Barreiro",
+          "obras": [
+            "CRECHE - LOTE 06 - BARREIROS"
+          ]
+        },
+        {
+          "nome": "Buíque",
+          "obras": [
+            "CRECHE - BUÍQUE"
+          ]
+        },
+        {
+          "nome": "Cabrobó",
+          "obras": [
+            "ARENINHA - CABROBÓ (PE)"
+          ]
+        },
+        {
+          "nome": "Calçado",
+          "obras": [
+            "ARENINHA - CALÇADO (PE)"
+          ]
+        },
+        {
+          "nome": "Cedro",
+          "obras": [
+            "CRECHE - LOTE 02 - CEDRO"
+          ]
+        },
+        {
+          "nome": "Floresta",
+          "obras": [
+            "CENTRO CULTURAL - FLORESTA"
+          ]
+        },
+        {
+          "nome": "Itaitinga",
+          "obras": [
+            "PRESÍDIO ITAQUITINGA"
+          ]
+        },
+        {
+          "nome": "Joaquim Nabuco",
+          "obras": [
+            "CRECHE - LOTE 06 - JOAQUIM NABUCO"
+          ]
+        },
+        {
+          "nome": "Lagoa Grande",
+          "obras": [
+            "ARENINHA - LAGOA GRANDE (PE)"
+          ]
+        },
+        {
+          "nome": "Lagoa do Ouro",
+          "obras": [
+            "ARENINHA - LAGOA DO OURO (PE)"
+          ]
+        },
+        {
+          "nome": "Lagoa dos Gatos",
+          "obras": [
+            "CRECHE - LOTE 06 - LAGOA DOS GATOS"
+          ]
+        },
+        {
+          "nome": "Maraial",
+          "obras": [
+            "CRECHE - LOTE 06 - MARAIAL"
+          ]
+        },
+        {
+          "nome": "Onrucuri",
+          "obras": [
+            "ARENINHA - ONRUCURI (PE)"
+          ]
+        },
+        {
+          "nome": "Orocó",
+          "obras": [
+            "CRECHE - LOTE 02 - OROCÓ"
+          ]
+        },
+        {
+          "nome": "Petrolina",
+          "obras": [
+            "ARENINHA PETROLINA 1 - VALE DOURADO (PE)",
+            "ARENINHA PETROLINA 1 - AREIA BRANCA (PE)",
+            "ARENINHA - PETROLINA (PE)"
+          ]
+        },
+        {
+          "nome": "Petrolândia",
+          "obras": [
+            "CENTRO CULTURAL - PETROLÂNDIA"
+          ]
+        },
+        {
+          "nome": "Recife",
+          "obras": [
+            "POLÍCIA RODOVIÁRIA FEDERAL - RECIFE"
+          ]
+        },
+        {
+          "nome": "Rio Formoso",
+          "obras": [
+            "CRECHE - LOTE 06 - RIO FORMOSO"
+          ]
+        },
+        {
+          "nome": "Salgueiro",
+          "obras": [
+            "CRECHE - LOTE 02 - SALGUEIRO"
+          ]
+        },
+        {
+          "nome": "Saloá",
+          "obras": [
+            "ARENINHA - SALOÁ (PE)"
+          ]
+        },
+        {
+          "nome": "Santa Cruz",
+          "obras": [
+            "ARENINHA - SANTA CRUZ (PE)"
+          ]
+        },
+        {
+          "nome": "Santa Filomena",
+          "obras": [
+            "ARENINHA - SANTA FILOMENA (PE)"
+          ]
+        },
+        {
+          "nome": "Serra Talhada",
+          "obras": [
+            "CRECHE - LOTE 02 - SERRA TALHADA"
+          ]
+        },
+        {
+          "nome": "Tacaratu",
+          "obras": [
+            "CRECHE - TACARATU"
+          ]
+        },
+        {
+          "nome": "Tupanatinga",
+          "obras": [
+            "CRECHE - TUPANATINGA"
+          ]
+        },
+        {
+          "nome": "Verdejante",
+          "obras": [
+            "CRECHE - LOTE 02 - VERDEJANTE"
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Piauí",
+      "cidades": [
+        {
+          "nome": "Fortaleza",
+          "obras": [
+            "UFDPAR - PIAUI"
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "Rio Grande do Norte",
+      "cidades": [
+        {
+          "nome": "Fortaleza",
+          "obras": [
+            "REFORMA DOCAS - RN"
+          ]
         }
       ]
     },
@@ -17,21 +320,10 @@
       "nome": "São Paulo",
       "cidades": [
         {
-          "nome": "São Paulo",
-          "obras": ["Torre Alpha", "Shopping Center Oeste"]
-        },
-        {
-          "nome": "Campinas",
-          "obras": ["Condomínio Vista Verde"]
-        }
-      ]
-    },
-    {
-      "nome": "Rio de Janeiro",
-      "cidades": [
-        {
-          "nome": "Rio de Janeiro",
-          "obras": ["Complexo Barra", "Edifício Atlântico"]
+          "nome": "São Carlos",
+          "obras": [
+            "HOSPITAL UNIVERSITÁRIO SÃO CARLOS - SÃO PAULO"
+          ]
         }
       ]
     }
