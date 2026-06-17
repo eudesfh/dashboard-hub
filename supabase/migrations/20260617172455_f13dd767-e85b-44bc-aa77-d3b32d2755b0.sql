@@ -1,0 +1,1 @@
+ALTER TABLE public.dashboards ADD COLUMN IF NOT EXISTS filter_mode text NOT NULL DEFAULT 'native';

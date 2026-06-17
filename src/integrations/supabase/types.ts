@@ -80,6 +80,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           embed_url: string
+          filter_mode: string
           filter_table: string | null
           id: string
           name: string
@@ -90,6 +91,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           embed_url: string
+          filter_mode?: string
           filter_table?: string | null
           id?: string
           name: string
@@ -100,6 +102,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           embed_url?: string
+          filter_mode?: string
           filter_table?: string | null
           id?: string
           name?: string

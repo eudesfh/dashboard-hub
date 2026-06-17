@@ -59,8 +59,10 @@ export default function AdminDashboards() {
     description: '',
     embed_url: '',
     filter_table: '',
+    filter_mode: 'native' as 'native' | 'page',
     workspaceIds: [] as string[],
   });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -151,8 +153,9 @@ export default function AdminDashboards() {
             name: formData.name.trim(),
             description: formData.description.trim() || null,
             embed_url: formData.embed_url.trim(),
-            filter_table: formData.filter_table.trim() || null,
-          })
+            filter_table: formData.filter_mode === 'native' ? (formData.filter_table.trim() || null) : null,
+            filter_mode: formData.filter_mode,
+          } as any)
           .eq('id', selectedDashboard.id);
 
         if (updateError) throw updateError;
@@ -207,11 +210,13 @@ export default function AdminDashboards() {
             name: formData.name.trim(),
             description: formData.description.trim() || null,
             embed_url: formData.embed_url.trim(),
-            filter_table: formData.filter_table.trim() || null,
+            filter_table: formData.filter_mode === 'native' ? (formData.filter_table.trim() || null) : null,
+            filter_mode: formData.filter_mode,
             created_by: user?.id,
-          })
+          } as any)
           .select()
           .single();
+
 
         if (createError) throw createError;
 
@@ -297,6 +302,7 @@ export default function AdminDashboards() {
       description: dashboard.description || '',
       embed_url: dashboard.embed_url,
       filter_table: (dashboard as any).filter_table || '',
+      filter_mode: ((dashboard as any).filter_mode as 'native' | 'page') || 'native',
       workspaceIds: dashboard.workspaces.map(ws => ws.id),
     });
     setIsDialogOpen(true);
@@ -309,8 +315,9 @@ export default function AdminDashboards() {
 
   const resetForm = () => {
     setSelectedDashboard(null);
-    setFormData({ name: '', description: '', embed_url: '', filter_table: '', workspaceIds: [] });
+    setFormData({ name: '', description: '', embed_url: '', filter_table: '', filter_mode: 'native', workspaceIds: [] });
   };
+
 
   const toggleWorkspace = (workspaceId: string) => {
     setFormData(prev => ({
@@ -398,17 +405,45 @@ export default function AdminDashboards() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="filter_table">Tabela de Filtro (Power BI)</Label>
-                    <Input
-                      id="filter_table"
-                      value={formData.filter_table}
-                      onChange={(e) => setFormData({ ...formData, filter_table: e.target.value })}
-                      placeholder="Ex: fMedicao, Obras"
-                    />
+                    <Label htmlFor="filter_mode">Modo de Filtro *</Label>
+                    <select
+                      id="filter_mode"
+                      value={formData.filter_mode}
+                      onChange={(e) => setFormData({ ...formData, filter_mode: e.target.value as 'native' | 'page' })}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    >
+                      <option value="native">Filtro nativo (URL pelo perfil do usuário)</option>
+                      <option value="page">Filtro pela página (usuário escolhe Obra/Mês/Ano)</option>
+                    </select>
                     <p className="text-xs text-muted-foreground">
-                      Nome da tabela do Power BI usada nos filtros de URL (ex: fMedicao/Estado eq 'Ceará')
+                      "Nativo": aplica filtros automáticos pelo perfil (Estado/Cidade/Obra). "Página": exibe controles de filtro acima do painel.
                     </p>
                   </div>
+
+                  {formData.filter_mode === 'native' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="filter_table">Tabela de Filtro (Power BI)</Label>
+                      <Input
+                        id="filter_table"
+                        value={formData.filter_table}
+                        onChange={(e) => setFormData({ ...formData, filter_table: e.target.value })}
+                        placeholder="Ex: fMedicao, Obras"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Nome da tabela do Power BI usada nos filtros de URL (ex: fMedicao/Estado eq 'Ceará')
+                      </p>
+                    </div>
+                  )}
+
+                  {formData.filter_mode === 'page' && (
+                    <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground space-y-1">
+                      <p className="font-medium text-foreground">Filtros da página (aplicados automaticamente)</p>
+                      <p>• Obra: <code>dObrasCadastradas/NomeDaObra</code> (obras cadastradas do usuário)</p>
+                      <p>• Mês: <code>dCalendario/MesNome</code> (janeiro, fevereiro, ...)</p>
+                      <p>• Ano: <code>dCalendario/Ano</code> (2022 a 2026)</p>
+                    </div>
+                  )}
+
 
                   <div className="space-y-2">
                     <Label htmlFor="description">Descrição</Label>

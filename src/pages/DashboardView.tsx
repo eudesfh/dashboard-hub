@@ -4,7 +4,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, Maximize2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, Loader2, Maximize2, Filter, X } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
 
 interface DashboardData {
   id: string;
@@ -12,10 +20,20 @@ interface DashboardData {
   description: string | null;
   embed_url: string;
   filter_table: string | null;
+  filter_mode: 'native' | 'page';
 }
 
-function buildFilteredUrl(baseUrl: string, profile: any, filterTable: string | null): string {
-  // Sempre esconder o painel de filtros, independentemente de filtros aplicados
+const MESES = [
+  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+];
+const ANOS = Array.from({ length: 2026 - 2022 + 1 }, (_, i) => 2022 + i);
+
+function escapeOData(v: string) {
+  return v.replace(/'/g, "''");
+}
+
+function buildNativeFilteredUrl(baseUrl: string, profile: any, filterTable: string | null): string {
   const separator = baseUrl.includes('?') ? '&' : '?';
   let url = `${baseUrl}${separator}filterPaneEnabled=false`;
 
@@ -27,19 +45,51 @@ function buildFilteredUrl(baseUrl: string, profile: any, filterTable: string | n
   const filters: string[] = [];
 
   if (profile.estado && ['estado', 'cidade', 'obra'].includes(filter_level)) {
-    filters.push(`${filterTable}/Estado eq '${profile.estado}'`);
+    filters.push(`${filterTable}/Estado eq '${escapeOData(profile.estado)}'`);
   }
   if (profile.cidade && ['cidade', 'obra'].includes(filter_level)) {
-    filters.push(`${filterTable}/Cidade eq '${profile.cidade}'`);
+    filters.push(`${filterTable}/Cidade eq '${escapeOData(profile.cidade)}'`);
   }
   if (filter_level === 'obra') {
     const obras: string[] = (profile.obras && profile.obras.length ? profile.obras : (profile.obra ? [profile.obra] : []));
     if (obras.length === 1) {
-      filters.push(`${filterTable}/NomeDaObra eq '${obras[0]}'`);
+      filters.push(`${filterTable}/NomeDaObra eq '${escapeOData(obras[0])}'`);
     } else if (obras.length > 1) {
-      const list = obras.map((o) => `'${o.replace(/'/g, "''")}'`).join(', ');
+      const list = obras.map((o) => `'${escapeOData(o)}'`).join(', ');
       filters.push(`${filterTable}/NomeDaObra in (${list})`);
     }
+  }
+
+  if (filters.length === 0) return url;
+  return `${url}&$filter=${encodeURIComponent(filters.join(' and '))}`;
+}
+
+function buildPageFilteredUrl(
+  baseUrl: string,
+  obras: string[],
+  meses: string[],
+  anos: number[],
+): string {
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  let url = `${baseUrl}${separator}filterPaneEnabled=false`;
+
+  const filters: string[] = [];
+  if (obras.length === 1) {
+    filters.push(`dObrasCadastradas/NomeDaObra eq '${escapeOData(obras[0])}'`);
+  } else if (obras.length > 1) {
+    const list = obras.map((o) => `'${escapeOData(o)}'`).join(', ');
+    filters.push(`dObrasCadastradas/NomeDaObra in (${list})`);
+  }
+  if (meses.length === 1) {
+    filters.push(`dCalendario/MesNome eq '${escapeOData(meses[0])}'`);
+  } else if (meses.length > 1) {
+    const list = meses.map((m) => `'${escapeOData(m)}'`).join(', ');
+    filters.push(`dCalendario/MesNome in (${list})`);
+  }
+  if (anos.length === 1) {
+    filters.push(`dCalendario/Ano eq ${anos[0]}`);
+  } else if (anos.length > 1) {
+    filters.push(`dCalendario/Ano in (${anos.join(', ')})`);
   }
 
   if (filters.length === 0) return url;
@@ -54,6 +104,16 @@ export default function DashboardView() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Page filter state
+  const [selectedObras, setSelectedObras] = useState<string[]>([]);
+  const [selectedMeses, setSelectedMeses] = useState<string[]>([]);
+  const [selectedAnos, setSelectedAnos] = useState<number[]>([]);
+
+  const userObras: string[] = useMemo(
+    () => (profile?.obras && profile.obras.length ? profile.obras : (profile?.obra ? [profile.obra] : [])),
+    [profile],
+  );
+
   useEffect(() => {
     if (id) {
       fetchDashboard();
@@ -65,7 +125,7 @@ export default function DashboardView() {
     try {
       const { data, error } = await supabase
         .from('dashboards')
-        .select('id, name, description, embed_url, filter_table')
+        .select('id, name, description, embed_url, filter_table, filter_mode')
         .eq('id', id)
         .maybeSingle();
 
@@ -76,7 +136,7 @@ export default function DashboardView() {
         return;
       }
 
-      setDashboard(data);
+      setDashboard(data as DashboardData);
     } catch (error) {
       console.error('Error fetching dashboard:', error);
       navigate('/dashboard');
@@ -87,12 +147,25 @@ export default function DashboardView() {
 
   const filteredUrl = useMemo(() => {
     if (!dashboard) return '';
-    return buildFilteredUrl(dashboard.embed_url, profile, dashboard.filter_table);
-  }, [dashboard, profile]);
+    if (dashboard.filter_mode === 'page') {
+      return buildPageFilteredUrl(dashboard.embed_url, selectedObras, selectedMeses, selectedAnos);
+    }
+    return buildNativeFilteredUrl(dashboard.embed_url, profile, dashboard.filter_table);
+  }, [dashboard, profile, selectedObras, selectedMeses, selectedAnos]);
 
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
+  const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
+
+  const toggleItem = <T,>(arr: T[], v: T, setter: (v: T[]) => void) => {
+    setter(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
   };
+
+  const clearAll = () => {
+    setSelectedObras([]);
+    setSelectedMeses([]);
+    setSelectedAnos([]);
+  };
+
+  const totalFilters = selectedObras.length + selectedMeses.length + selectedAnos.length;
 
   if (isLoading) {
     return (
@@ -104,26 +177,114 @@ export default function DashboardView() {
     );
   }
 
-  if (!dashboard) {
-    return null;
-  }
+  if (!dashboard) return null;
+
+  const PageFilters = dashboard.filter_mode === 'page' ? (
+    <div className="flex flex-wrap items-center gap-2">
+      {/* Obras */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-2">
+            <Filter className="h-3.5 w-3.5" />
+            Obra
+            {selectedObras.length > 0 && (
+              <Badge variant="secondary" className="ml-1">{selectedObras.length}</Badge>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-64 max-h-72 overflow-y-auto">
+          {userObras.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma obra cadastrada no seu perfil.</p>
+          ) : (
+            <div className="space-y-2">
+              {userObras.map((o) => (
+                <label key={o} className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={selectedObras.includes(o)}
+                    onCheckedChange={() => toggleItem(selectedObras, o, setSelectedObras)}
+                  />
+                  <span className="text-sm">{o}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
+
+      {/* Mês */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-2">
+            <Filter className="h-3.5 w-3.5" />
+            Mês
+            {selectedMeses.length > 0 && (
+              <Badge variant="secondary" className="ml-1">{selectedMeses.length}</Badge>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-56">
+          <div className="grid grid-cols-2 gap-2">
+            {MESES.map((m) => (
+              <label key={m} className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  checked={selectedMeses.includes(m)}
+                  onCheckedChange={() => toggleItem(selectedMeses, m, setSelectedMeses)}
+                />
+                <span className="text-sm capitalize">{m}</span>
+              </label>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* Ano */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-2">
+            <Filter className="h-3.5 w-3.5" />
+            Ano
+            {selectedAnos.length > 0 && (
+              <Badge variant="secondary" className="ml-1">{selectedAnos.length}</Badge>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-40">
+          <div className="space-y-2">
+            {ANOS.map((a) => (
+              <label key={a} className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  checked={selectedAnos.includes(a)}
+                  onCheckedChange={() => toggleItem(selectedAnos, a, setSelectedAnos)}
+                />
+                <span className="text-sm">{a}</span>
+              </label>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {totalFilters > 0 && (
+        <Button variant="ghost" size="sm" onClick={clearAll} className="gap-1 text-muted-foreground">
+          <X className="h-3.5 w-3.5" />
+          Limpar
+        </Button>
+      )}
+    </div>
+  ) : null;
 
   if (isFullscreen) {
     return (
-      <div className="fixed inset-0 z-50 bg-background">
-        <div className="absolute top-4 left-4 z-10">
-          <Button
-            variant="secondary"
-            onClick={toggleFullscreen}
-            className="shadow-lg"
-          >
+      <div className="fixed inset-0 z-50 bg-background flex flex-col">
+        <div className="flex items-center gap-3 p-3 border-b bg-card">
+          <Button variant="secondary" size="sm" onClick={toggleFullscreen} className="shadow-sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Sair da tela cheia
           </Button>
+          {PageFilters}
         </div>
         <iframe
           src={filteredUrl}
-          className="w-full h-full border-0"
+          className="flex-1 w-full border-0"
           allowFullScreen
           title={dashboard.name}
         />
@@ -136,35 +297,26 @@ export default function DashboardView() {
       <div className="space-y-6 animate-fade-in">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/dashboard')}
-              className="shrink-0"
-            >
+            <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="shrink-0">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-display font-bold text-foreground">
-                {dashboard.name}
-              </h1>
+              <h1 className="text-2xl font-display font-bold text-foreground">{dashboard.name}</h1>
               {dashboard.description && (
-                <p className="text-muted-foreground mt-1">
-                  {dashboard.description}
-                </p>
+                <p className="text-muted-foreground mt-1">{dashboard.description}</p>
               )}
             </div>
           </div>
 
-          <Button
-            variant="outline"
-            onClick={toggleFullscreen}
-            className="flex items-center gap-2"
-          >
+          <Button variant="outline" onClick={toggleFullscreen} className="flex items-center gap-2">
             <Maximize2 className="h-4 w-4" />
             Tela cheia
           </Button>
         </div>
+
+        {PageFilters && (
+          <div className="rounded-lg border bg-card p-3">{PageFilters}</div>
+        )}
 
         <div className="relative rounded-lg overflow-hidden border border-border shadow-card bg-card">
           <div className="aspect-video w-full">
