@@ -27,6 +27,20 @@ const MESES = [
   'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
 ];
+const MONTH_MAP: Record<string, string> = {
+  'janeiro': 'Jan',
+  'fevereiro': 'Fev',
+  'março': 'Mar',
+  'abril': 'Abr',
+  'maio': 'Mai',
+  'junho': 'Jun',
+  'julho': 'Jul',
+  'agosto': 'Ago',
+  'setembro': 'Set',
+  'outubro': 'Out',
+  'novembro': 'Nov',
+  'dezembro': 'Dez',
+};
 const ANOS = Array.from({ length: 2026 - 2022 + 1 }, (_, i) => 2022 + i);
 
 function escapeOData(v: string) {
@@ -44,19 +58,13 @@ function buildNativeFilteredUrl(baseUrl: string, profile: any, filterTable: stri
 
   const filters: string[] = [];
 
-  if (profile.estado && ['estado', 'cidade', 'obra'].includes(filter_level)) {
-    filters.push(`${filterTable}/Estado eq '${escapeOData(profile.estado)}'`);
-  }
-  if (profile.cidade && ['cidade', 'obra'].includes(filter_level)) {
-    filters.push(`${filterTable}/Cidade eq '${escapeOData(profile.cidade)}'`);
-  }
   if (filter_level === 'obra') {
     const obras: string[] = (profile.obras && profile.obras.length ? profile.obras : (profile.obra ? [profile.obra] : []));
     if (obras.length === 1) {
-      filters.push(`${filterTable}/NomeDaObra eq '${escapeOData(obras[0])}'`);
+      filters.push(`${filterTable}/Nome Obra eq '${escapeOData(obras[0])}'`);
     } else if (obras.length > 1) {
       const list = obras.map((o) => `'${escapeOData(o)}'`).join(', ');
-      filters.push(`${filterTable}/NomeDaObra in (${list})`);
+      filters.push(`${filterTable}/Nome Obra in (${list})`);
     }
   }
 
@@ -75,16 +83,17 @@ function buildPageFilteredUrl(
 
   const filters: string[] = [];
   if (obras.length === 1) {
-    filters.push(`dObrasCadastradas/NomeDaObra eq '${escapeOData(obras[0])}'`);
+    filters.push(`dObrasCadastradas/Nome Obra eq '${escapeOData(obras[0])}'`);
   } else if (obras.length > 1) {
     const list = obras.map((o) => `'${escapeOData(o)}'`).join(', ');
-    filters.push(`dObrasCadastradas/NomeDaObra in (${list})`);
+    filters.push(`dObrasCadastradas/Nome Obra in (${list})`);
   }
   if (meses.length === 1) {
-    filters.push(`dCalendario/MesNome eq '${escapeOData(meses[0])}'`);
+    const abbrev = MONTH_MAP[meses[0].toLowerCase()] || meses[0];
+    filters.push(`dCalendario/MesAbre eq '${escapeOData(abbrev)}'`);
   } else if (meses.length > 1) {
-    const list = meses.map((m) => `'${escapeOData(m)}'`).join(', ');
-    filters.push(`dCalendario/MesNome in (${list})`);
+    const list = meses.map((m) => `'${escapeOData(MONTH_MAP[m.toLowerCase()] || m)}'`).join(', ');
+    filters.push(`dCalendario/MesAbre in (${list})`);
   }
   if (anos.length === 1) {
     filters.push(`dCalendario/Ano eq ${anos[0]}`);

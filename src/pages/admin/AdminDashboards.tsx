@@ -416,7 +416,7 @@ export default function AdminDashboards() {
                       <option value="page">Filtro pela página (usuário escolhe Obra/Mês/Ano)</option>
                     </select>
                     <p className="text-xs text-muted-foreground">
-                      "Nativo": aplica filtros automáticos pelo perfil (Estado/Cidade/Obra). "Página": exibe controles de filtro acima do painel.
+                      "Nativo": aplica filtros automáticos pelo perfil (Obra). "Página": exibe controles de filtro acima do painel.
                     </p>
                   </div>
 
@@ -430,7 +430,7 @@ export default function AdminDashboards() {
                         placeholder="Ex: fMedicao, Obras"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Nome da tabela do Power BI usada nos filtros de URL (ex: fMedicao/Estado eq 'Ceará')
+                        Nome da tabela do Power BI usada nos filtros de URL (ex: fMedicao/Nome Obra eq 'Obra 1')
                       </p>
                     </div>
                   )}
@@ -438,8 +438,8 @@ export default function AdminDashboards() {
                   {formData.filter_mode === 'page' && (
                     <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground space-y-1">
                       <p className="font-medium text-foreground">Filtros da página (aplicados automaticamente)</p>
-                      <p>• Obra: <code>dObrasCadastradas/NomeDaObra</code> (obras cadastradas do usuário)</p>
-                      <p>• Mês: <code>dCalendario/MesNome</code> (janeiro, fevereiro, ...)</p>
+                      <p>• Obra: <code>dObrasCadastradas/Nome Obra</code> (obras cadastradas do usuário)</p>
+                      <p>• Mês: <code>dCalendario/MesAbre</code> (Jan, Fev, ...)</p>
                       <p>• Ano: <code>dCalendario/Ano</code> (2022 a 2026)</p>
                     </div>
                   )}
