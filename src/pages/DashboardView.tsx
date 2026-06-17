@@ -47,16 +47,15 @@ function buildNativeFilteredUrl(baseUrl: string, profile: any, filterTable: stri
   if (filter_level === 'obra') {
     const obras: string[] = (profile.obras && profile.obras.length ? profile.obras : (profile.obra ? [profile.obra] : []));
     if (obras.length === 1) {
-      filters.push(`${filterTable}/Nome Obra eq '${escapeOData(obras[0])}'`);
+      filters.push(`${filterTable}/Nome_x0020_Obra eq '${escapeOData(obras[0])}'`);
     } else if (obras.length > 1) {
       const list = obras.map((o) => `'${escapeOData(o)}'`).join(', ');
-      filters.push(`${filterTable}/Nome Obra in (${list})`);
+      filters.push(`${filterTable}/Nome_x0020_Obra in (${list})`);
     }
   }
 
   if (filters.length === 0) return url;
-  const filterParams = filters.map((f) => `filter=${encodeURIComponent(f).replace(/%2F/g, '/')}`).join('&');
-  return `${url}&${filterParams}`;
+  return `${url}&filter=${encodeURIComponent(filters.join(' and ')).replace(/%2F/g, '/')}`;
 }
 
 function buildPageFilteredUrl(
@@ -70,10 +69,10 @@ function buildPageFilteredUrl(
 
   const filters: string[] = [];
   if (obras.length === 1) {
-    filters.push(`dObrasCadastradas/Nome Obra eq '${escapeOData(obras[0])}'`);
+    filters.push(`dObrasCadastradas/Nome_x0020_Obra eq '${escapeOData(obras[0])}'`);
   } else if (obras.length > 1) {
     const list = obras.map((o) => `'${escapeOData(o)}'`).join(', ');
-    filters.push(`dObrasCadastradas/Nome Obra in (${list})`);
+    filters.push(`dObrasCadastradas/Nome_x0020_Obra in (${list})`);
   }
   if (meses.length === 1) {
     filters.push(`dCalendario/MesAbrev eq '${escapeOData(meses[0].toLowerCase())}'`);
@@ -88,8 +87,7 @@ function buildPageFilteredUrl(
   }
 
   if (filters.length === 0) return url;
-  const filterParams = filters.map((f) => `filter=${encodeURIComponent(f).replace(/%2F/g, '/')}`).join('&');
-  return `${url}&${filterParams}`;
+  return `${url}&filter=${encodeURIComponent(filters.join(' and ')).replace(/%2F/g, '/')}`;
 }
 
 export default function DashboardView() {
