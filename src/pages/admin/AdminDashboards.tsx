@@ -439,7 +439,7 @@ export default function AdminDashboards() {
                     <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground space-y-1">
                       <p className="font-medium text-foreground">Filtros da página (aplicados automaticamente)</p>
                       <p>• Obra: <code>dObrasCadastradas/Nome Obra</code> (obras cadastradas do usuário)</p>
-                      <p>• Mês: <code>dCalendario/MesAbre</code> (Jan, Fev, ...)</p>
+                      <p>• Mês: <code>dCalendario/MesAbrev</code> (janeiro, fevereiro, ...)</p>
                       <p>• Ano: <code>dCalendario/Ano</code> (2022 a 2026)</p>
                     </div>
                   )}

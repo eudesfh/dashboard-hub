@@ -27,20 +27,6 @@ const MESES = [
   'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
 ];
-const MONTH_MAP: Record<string, string> = {
-  'janeiro': 'Jan',
-  'fevereiro': 'Fev',
-  'março': 'Mar',
-  'abril': 'Abr',
-  'maio': 'Mai',
-  'junho': 'Jun',
-  'julho': 'Jul',
-  'agosto': 'Ago',
-  'setembro': 'Set',
-  'outubro': 'Out',
-  'novembro': 'Nov',
-  'dezembro': 'Dez',
-};
 const ANOS = Array.from({ length: 2026 - 2022 + 1 }, (_, i) => 2022 + i);
 
 function escapeOData(v: string) {
@@ -69,7 +55,8 @@ function buildNativeFilteredUrl(baseUrl: string, profile: any, filterTable: stri
   }
 
   if (filters.length === 0) return url;
-  return `${url}&$filter=${encodeURIComponent(filters.join(' and '))}`;
+  const filterParams = filters.map((f) => `filter=${encodeURIComponent(f).replace(/%2F/g, '/')}`).join('&');
+  return `${url}&${filterParams}`;
 }
 
 function buildPageFilteredUrl(
@@ -89,11 +76,10 @@ function buildPageFilteredUrl(
     filters.push(`dObrasCadastradas/Nome Obra in (${list})`);
   }
   if (meses.length === 1) {
-    const abbrev = MONTH_MAP[meses[0].toLowerCase()] || meses[0];
-    filters.push(`dCalendario/MesAbre eq '${escapeOData(abbrev)}'`);
+    filters.push(`dCalendario/MesAbrev eq '${escapeOData(meses[0].toLowerCase())}'`);
   } else if (meses.length > 1) {
-    const list = meses.map((m) => `'${escapeOData(MONTH_MAP[m.toLowerCase()] || m)}'`).join(', ');
-    filters.push(`dCalendario/MesAbre in (${list})`);
+    const list = meses.map((m) => `'${escapeOData(m.toLowerCase())}'`).join(', ');
+    filters.push(`dCalendario/MesAbrev in (${list})`);
   }
   if (anos.length === 1) {
     filters.push(`dCalendario/Ano eq ${anos[0]}`);
@@ -102,7 +88,8 @@ function buildPageFilteredUrl(
   }
 
   if (filters.length === 0) return url;
-  return `${url}&$filter=${encodeURIComponent(filters.join(' and '))}`;
+  const filterParams = filters.map((f) => `filter=${encodeURIComponent(f).replace(/%2F/g, '/')}`).join('&');
+  return `${url}&${filterParams}`;
 }
 
 export default function DashboardView() {
