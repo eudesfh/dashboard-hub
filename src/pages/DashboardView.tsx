@@ -6,7 +6,8 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Loader2, Maximize2, Filter, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ArrowLeft, Loader2, Maximize2, Filter, X, Search } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -102,11 +103,16 @@ export default function DashboardView() {
   const [selectedObras, setSelectedObras] = useState<string[]>([]);
   const [selectedMeses, setSelectedMeses] = useState<string[]>([]);
   const [selectedAnos, setSelectedAnos] = useState<number[]>([]);
+  const [obraSearch, setObraSearch] = useState('');
 
   const userObras: string[] = useMemo(
     () => (profile?.obras && profile.obras.length ? profile.obras : (profile?.obra ? [profile.obra] : [])),
     [profile],
   );
+
+  const filteredUserObras = useMemo(() => {
+    return userObras.filter((o) => o.toLowerCase().includes(obraSearch.toLowerCase()));
+  }, [userObras, obraSearch]);
 
   useEffect(() => {
     if (id) {
@@ -149,14 +155,23 @@ export default function DashboardView() {
 
   const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
 
-  const toggleItem = <T,>(arr: T[], v: T, setter: (v: T[]) => void) => {
-    setter(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
+  const selectSingleObra = (o: string) => {
+    setSelectedObras(selectedObras.includes(o) ? [] : [o]);
+  };
+
+  const selectSingleMês = (m: string) => {
+    setSelectedMeses(selectedMeses.includes(m) ? [] : [m]);
+  };
+
+  const selectSingleAno = (a: number) => {
+    setSelectedAnos(selectedAnos.includes(a) ? [] : [a]);
   };
 
   const clearAll = () => {
     setSelectedObras([]);
     setSelectedMeses([]);
     setSelectedAnos([]);
+    setObraSearch('');
   };
 
   const totalFilters = selectedObras.length + selectedMeses.length + selectedAnos.length;
@@ -176,55 +191,68 @@ export default function DashboardView() {
   const PageFilters = dashboard.filter_mode === 'page' ? (
     <div className="flex flex-wrap items-center gap-2">
       {/* Obras */}
-      <Popover>
+      <Popover onOpenChange={(open) => !open && setObraSearch('')}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Filter className="h-3.5 w-3.5" />
-            Obra
-            {selectedObras.length > 0 && (
-              <Badge variant="secondary" className="ml-1">{selectedObras.length}</Badge>
-            )}
+          <Button variant="outline" size="sm" className="gap-2 max-w-[240px] truncate shadow-sm">
+            <Filter className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              {selectedObras.length > 0 ? `Obra: ${selectedObras[0]}` : 'Obra'}
+            </span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-64 max-h-72 overflow-y-auto">
-          {userObras.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma obra cadastrada no seu perfil.</p>
-          ) : (
-            <div className="space-y-2">
-              {userObras.map((o) => (
-                <label key={o} className="flex items-center gap-2 cursor-pointer">
+        <PopoverContent align="start" className="w-68 p-3 flex flex-col gap-2 max-h-80">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar obra..."
+              value={obraSearch}
+              onChange={(e) => setObraSearch(e.target.value)}
+              className="pl-8 h-8 text-xs"
+            />
+          </div>
+          <div className="overflow-y-auto flex-1 space-y-1 mt-1 pr-1 max-h-48">
+            {filteredUserObras.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-2 text-center">Nenhuma obra encontrada.</p>
+            ) : (
+              filteredUserObras.map((o) => (
+                <label 
+                  key={o} 
+                  className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded transition-colors"
+                >
                   <Checkbox
                     checked={selectedObras.includes(o)}
-                    onCheckedChange={() => toggleItem(selectedObras, o, setSelectedObras)}
+                    onCheckedChange={() => selectSingleObra(o)}
                   />
-                  <span className="text-sm">{o}</span>
+                  <span className="text-xs text-foreground font-medium line-clamp-2">{o}</span>
                 </label>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </PopoverContent>
       </Popover>
 
       {/* Mês */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Filter className="h-3.5 w-3.5" />
-            Mês
-            {selectedMeses.length > 0 && (
-              <Badge variant="secondary" className="ml-1">{selectedMeses.length}</Badge>
-            )}
+          <Button variant="outline" size="sm" className="gap-2 max-w-[160px] truncate shadow-sm">
+            <Filter className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate capitalize">
+              {selectedMeses.length > 0 ? `Mês: ${selectedMeses[0]}` : 'Mês'}
+            </span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-56">
+        <PopoverContent align="start" className="w-56 p-3 max-h-72 overflow-y-auto">
           <div className="grid grid-cols-2 gap-2">
             {MESES.map((m) => (
-              <label key={m} className="flex items-center gap-2 cursor-pointer">
+              <label 
+                key={m} 
+                className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded transition-colors"
+              >
                 <Checkbox
                   checked={selectedMeses.includes(m)}
-                  onCheckedChange={() => toggleItem(selectedMeses, m, setSelectedMeses)}
+                  onCheckedChange={() => selectSingleMês(m)}
                 />
-                <span className="text-sm capitalize">{m}</span>
+                <span className="text-xs capitalize font-medium text-foreground">{m}</span>
               </label>
             ))}
           </div>
@@ -234,23 +262,25 @@ export default function DashboardView() {
       {/* Ano */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Filter className="h-3.5 w-3.5" />
-            Ano
-            {selectedAnos.length > 0 && (
-              <Badge variant="secondary" className="ml-1">{selectedAnos.length}</Badge>
-            )}
+          <Button variant="outline" size="sm" className="gap-2 max-w-[120px] truncate shadow-sm">
+            <Filter className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              {selectedAnos.length > 0 ? `Ano: ${selectedAnos[0]}` : 'Ano'}
+            </span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-40">
-          <div className="space-y-2">
+        <PopoverContent align="start" className="w-40 p-3 max-h-72 overflow-y-auto">
+          <div className="space-y-1.5">
             {ANOS.map((a) => (
-              <label key={a} className="flex items-center gap-2 cursor-pointer">
+              <label 
+                key={a} 
+                className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded transition-colors"
+              >
                 <Checkbox
                   checked={selectedAnos.includes(a)}
-                  onCheckedChange={() => toggleItem(selectedAnos, a, setSelectedAnos)}
+                  onCheckedChange={() => selectSingleAno(a)}
                 />
-                <span className="text-sm">{a}</span>
+                <span className="text-xs font-medium text-foreground">{a}</span>
               </label>
             ))}
           </div>
