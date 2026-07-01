@@ -76,10 +76,10 @@ function buildPageFilteredUrl(
     filters.push(`dObrasCadastradas/Nome_x0020_Obra in (${list})`);
   }
   if (meses.length === 1) {
-    filters.push(`dCalendario/MesAbrev eq '${escapeOData(meses[0].toLowerCase())}'`);
+    filters.push(`dCalendario/MesNome eq '${escapeOData(meses[0].toLowerCase())}'`);
   } else if (meses.length > 1) {
     const list = meses.map((m) => `'${escapeOData(m.toLowerCase())}'`).join(', ');
-    filters.push(`dCalendario/MesAbrev in (${list})`);
+    filters.push(`dCalendario/MesNome in (${list})`);
   }
   if (anos.length === 1) {
     filters.push(`dCalendario/Ano eq ${anos[0]}`);
