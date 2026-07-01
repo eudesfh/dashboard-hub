@@ -236,7 +236,7 @@ export default function DashboardView() {
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="gap-2 max-w-[160px] truncate shadow-sm">
             <Filter className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate capitalize">
+            <span className="truncate">
               {selectedMeses.length > 0 ? `Mês: ${selectedMeses[0]}` : 'Mês'}
             </span>
           </Button>
@@ -252,7 +252,7 @@ export default function DashboardView() {
                   checked={selectedMeses.includes(m)}
                   onCheckedChange={() => selectSingleMês(m)}
                 />
-                <span className="text-xs capitalize font-medium text-foreground">{m}</span>
+                <span className="text-xs font-medium text-foreground">{m}</span>
               </label>
             ))}
           </div>
