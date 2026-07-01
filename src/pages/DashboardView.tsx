@@ -252,7 +252,7 @@ export default function DashboardView() {
                   checked={selectedMeses.includes(m)}
                   onCheckedChange={() => selectSingleMês(m)}
                 />
-                <span className="text-xs capitalize font-medium text-foreground">{m}</span>
+                <span className="text-xs font-medium text-foreground">{m}</span>
               </label>
             ))}
           </div>
