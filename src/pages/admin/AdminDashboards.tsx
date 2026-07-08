@@ -37,12 +37,34 @@ interface Dashboard {
   description: string | null;
   embed_url: string;
   created_at: string;
+  workspace_id: string | null;
+  report_id: string | null;
   workspaces: { id: string; name: string }[];
 }
 
 interface Workspace {
   id: string;
   name: string;
+}
+
+// Extract Power BI workspace/report GUIDs from any report URL:
+// - app.powerbi.com/groups/{workspaceId}/reports/{reportId}/...
+// - app.powerbi.com/reportEmbed?reportId={reportId}&groupId={workspaceId}
+function parsePowerBiUrl(raw: string): { workspaceId: string | null; reportId: string | null } {
+  let workspaceId: string | null = null;
+  let reportId: string | null = null;
+  try {
+    const url = new URL(raw.trim());
+    const groupsMatch = url.pathname.match(/\/groups\/([0-9a-f-]{36})/i);
+    const reportsMatch = url.pathname.match(/\/reports\/([0-9a-f-]{36})/i);
+    if (groupsMatch) workspaceId = groupsMatch[1];
+    if (reportsMatch) reportId = reportsMatch[1];
+    if (!reportId) reportId = url.searchParams.get('reportId');
+    if (!workspaceId) workspaceId = url.searchParams.get('groupId');
+  } catch {
+    // not a valid URL yet — ignore
+  }
+  return { workspaceId, reportId };
 }
 
 export default function AdminDashboards() {
@@ -58,6 +80,8 @@ export default function AdminDashboards() {
     name: '',
     description: '',
     embed_url: '',
+    workspace_id: '',
+    report_id: '',
     filter_table: '',
     filter_mode: 'native' as 'native' | 'page',
     workspaceIds: [] as string[],
@@ -81,6 +105,10 @@ export default function AdminDashboards() {
           description,
           embed_url,
           created_at,
+          workspace_id,
+          report_id,
+          filter_table,
+          filter_mode,
           dashboard_workspaces(
             workspace:workspaces(id, name)
           )
@@ -88,12 +116,8 @@ export default function AdminDashboards() {
 
       if (dashboardsError) throw dashboardsError;
 
-      const formattedDashboards = dashboardsData?.map(d => ({
-        id: d.id,
-        name: d.name,
-        description: d.description,
-        embed_url: d.embed_url,
-        created_at: d.created_at,
+      const formattedDashboards = dashboardsData?.map((d: any) => ({
+        ...d,
         workspaces: d.dashboard_workspaces
           ?.map((dw: any) => dw.workspace)
           .filter(Boolean) || [],
@@ -153,6 +177,8 @@ export default function AdminDashboards() {
             name: formData.name.trim(),
             description: formData.description.trim() || null,
             embed_url: formData.embed_url.trim(),
+            workspace_id: formData.workspace_id.trim() || null,
+            report_id: formData.report_id.trim() || null,
             filter_table: formData.filter_mode === 'native' ? (formData.filter_table.trim() || null) : null,
             filter_mode: formData.filter_mode,
           } as any)
@@ -189,10 +215,12 @@ export default function AdminDashboards() {
         setDashboards(dashboards.map(d => 
           d.id === selectedDashboard.id 
             ? { 
-                ...d, 
-                name: formData.name.trim(), 
+                ...d,
+                name: formData.name.trim(),
                 description: formData.description.trim() || null,
                 embed_url: formData.embed_url.trim(),
+                workspace_id: formData.workspace_id.trim() || null,
+                report_id: formData.report_id.trim() || null,
                 workspaces: updatedWorkspaces,
               }
             : d
@@ -210,6 +238,8 @@ export default function AdminDashboards() {
             name: formData.name.trim(),
             description: formData.description.trim() || null,
             embed_url: formData.embed_url.trim(),
+            workspace_id: formData.workspace_id.trim() || null,
+            report_id: formData.report_id.trim() || null,
             filter_table: formData.filter_mode === 'native' ? (formData.filter_table.trim() || null) : null,
             filter_mode: formData.filter_mode,
             created_by: user?.id,
@@ -301,6 +331,8 @@ export default function AdminDashboards() {
       name: dashboard.name,
       description: dashboard.description || '',
       embed_url: dashboard.embed_url,
+      workspace_id: dashboard.workspace_id || '',
+      report_id: dashboard.report_id || '',
       filter_table: (dashboard as any).filter_table || '',
       filter_mode: ((dashboard as any).filter_mode as 'native' | 'page') || 'native',
       workspaceIds: dashboard.workspaces.map(ws => ws.id),
@@ -315,7 +347,7 @@ export default function AdminDashboards() {
 
   const resetForm = () => {
     setSelectedDashboard(null);
-    setFormData({ name: '', description: '', embed_url: '', filter_table: '', filter_mode: 'native', workspaceIds: [] });
+    setFormData({ name: '', description: '', embed_url: '', workspace_id: '', report_id: '', filter_table: '', filter_mode: 'native', workspaceIds: [] });
   };
 
 
@@ -393,14 +425,48 @@ export default function AdminDashboards() {
                       <Input
                         id="embed_url"
                         value={formData.embed_url}
-                        onChange={(e) => setFormData({ ...formData, embed_url: e.target.value })}
-                        placeholder="https://app.powerbi.com/view?r=..."
+                        onChange={(e) => {
+                          const parsed = parsePowerBiUrl(e.target.value);
+                          setFormData({
+                            ...formData,
+                            embed_url: e.target.value,
+                            workspace_id: parsed.workspaceId ?? formData.workspace_id,
+                            report_id: parsed.reportId ?? formData.report_id,
+                          });
+                        }}
+                        placeholder="https://app.powerbi.com/groups/{workspace}/reports/{report}/..."
                         className="pl-10"
                         required
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Cole aqui o link público do seu relatório Power BI
+                      Cole o link do relatório aberto no Power BI Service (app.powerbi.com/groups/.../reports/...).
+                      Os IDs abaixo são extraídos automaticamente.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="workspace_id">Workspace ID (Power BI)</Label>
+                      <Input
+                        id="workspace_id"
+                        value={formData.workspace_id}
+                        onChange={(e) => setFormData({ ...formData, workspace_id: e.target.value })}
+                        placeholder="GUID do workspace"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="report_id">Report ID (Power BI)</Label>
+                      <Input
+                        id="report_id"
+                        value={formData.report_id}
+                        onChange={(e) => setFormData({ ...formData, report_id: e.target.value })}
+                        placeholder="GUID do relatório"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground col-span-2 -mt-1">
+                      Com os dois IDs preenchidos, o painel abre com login automático (Service Principal), sem pedir senha.
+                      Sem eles, é usado o embed antigo por iframe.
                     </p>
                   </div>
 
