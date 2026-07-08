@@ -1,11 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Loader2, Maximize2, Filter, X, Search } from 'lucide-react';
 import {
@@ -13,7 +12,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Badge } from '@/components/ui/badge';
+import { PowerBIEmbed } from 'powerbi-client-react';
+import { models } from 'powerbi-client';
 
 interface DashboardData {
   id: string;
@@ -22,6 +22,14 @@ interface DashboardData {
   embed_url: string;
   filter_table: string | null;
   filter_mode: 'native' | 'page';
+  workspace_id: string | null;
+  report_id: string | null;
+}
+
+interface EmbedInfo {
+  embedUrl: string;
+  embedToken: string;
+  reportId: string;
 }
 
 const MESES = [
@@ -34,17 +42,14 @@ function escapeOData(v: string) {
   return v.replace(/'/g, "''");
 }
 
+// Legacy: build URL for old public embed (kept for backward compat)
 function buildNativeFilteredUrl(baseUrl: string, profile: any, filterTable: string | null): string {
   const separator = baseUrl.includes('?') ? '&' : '?';
   let url = `${baseUrl}${separator}filterPaneEnabled=false`;
-
   if (!profile?.access_profile || !filterTable) return url;
-
   const { filter_level } = profile.access_profile;
   if (filter_level === 'none') return url;
-
   const filters: string[] = [];
-
   if (filter_level === 'obra') {
     const obras: string[] = (profile.obras && profile.obras.length ? profile.obras : (profile.obra ? [profile.obra] : []));
     if (obras.length === 1) {
@@ -54,7 +59,6 @@ function buildNativeFilteredUrl(baseUrl: string, profile: any, filterTable: stri
       filters.push(`${filterTable}/Nome_x0020_Obra in (${list})`);
     }
   }
-
   if (filters.length === 0) return url;
   return `${url}&filter=${encodeURIComponent(filters.join(' and ')).replace(/%2F/g, '/')}`;
 }
@@ -67,7 +71,6 @@ function buildPageFilteredUrl(
 ): string {
   const separator = baseUrl.includes('?') ? '&' : '?';
   let url = `${baseUrl}${separator}filterPaneEnabled=false`;
-
   const filters: string[] = [];
   if (obras.length === 1) {
     filters.push(`dObrasCadastradas/Nome_x0020_Obra eq '${escapeOData(obras[0])}'`);
@@ -86,9 +89,24 @@ function buildPageFilteredUrl(
   } else if (anos.length > 1) {
     filters.push(`dCalendario/Ano in (${anos.join(', ')})`);
   }
-
   if (filters.length === 0) return url;
   return `${url}&filter=${encodeURIComponent(filters.join(' and ')).replace(/%2F/g, '/')}`;
+}
+
+// Build powerbi-client filter objects for SDK embed
+function buildBasicFilter(
+  table: string,
+  column: string,
+  values: (string | number)[],
+): models.IBasicFilter {
+  return {
+    $schema: 'http://powerbi.com/product/schema#basic',
+    target: { table, column },
+    operator: 'In',
+    values,
+    filterType: models.FilterType.Basic,
+    requireSingleSelection: false,
+  };
 }
 
 export default function DashboardView() {
@@ -98,6 +116,9 @@ export default function DashboardView() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [embedInfo, setEmbedInfo] = useState<EmbedInfo | null>(null);
+  const [embedError, setEmbedError] = useState<string | null>(null);
+  const reportRef = useRef<any>(null);
 
   // Page filter state
   const [selectedObras, setSelectedObras] = useState<string[]>([]);
@@ -114,28 +135,31 @@ export default function DashboardView() {
     return userObras.filter((o) => o.toLowerCase().includes(obraSearch.toLowerCase()));
   }, [userObras, obraSearch]);
 
+  const useServicePrincipal = !!(dashboard?.workspace_id && dashboard?.report_id);
+
   useEffect(() => {
-    if (id) {
-      fetchDashboard();
-    }
+    if (id) fetchDashboard();
   }, [id]);
+
+  useEffect(() => {
+    if (dashboard && useServicePrincipal) {
+      fetchEmbedToken(dashboard.id);
+    }
+  }, [dashboard, useServicePrincipal]);
 
   const fetchDashboard = async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('dashboards')
-        .select('id, name, description, embed_url, filter_table, filter_mode')
+        .select('id, name, description, embed_url, filter_table, filter_mode, workspace_id, report_id')
         .eq('id', id)
         .maybeSingle();
-
       if (error) throw error;
-      
       if (!data) {
         navigate('/dashboard');
         return;
       }
-
       setDashboard(data as DashboardData);
     } catch (error) {
       console.error('Error fetching dashboard:', error);
@@ -145,7 +169,29 @@ export default function DashboardView() {
     }
   };
 
-  const filteredUrl = useMemo(() => {
+  const fetchEmbedToken = async (dashboardId: string) => {
+    setEmbedError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('powerbi-embed-token', {
+        body: { dashboardId },
+      });
+      if (error) {
+        const details = (error as any)?.context
+          ? await (error as any).context.text().catch(() => (error as Error).message)
+          : (error as Error).message;
+        console.error('embed-token failed:', details);
+        setEmbedError(String(details));
+        return;
+      }
+      setEmbedInfo(data as EmbedInfo);
+    } catch (e) {
+      console.error(e);
+      setEmbedError((e as Error).message);
+    }
+  };
+
+  // Legacy iframe URL (only used when no Service Principal)
+  const legacyFilteredUrl = useMemo(() => {
     if (!dashboard) return '';
     if (dashboard.filter_mode === 'page') {
       return buildPageFilteredUrl(dashboard.embed_url, selectedObras, selectedMeses, selectedAnos);
@@ -153,19 +199,44 @@ export default function DashboardView() {
     return buildNativeFilteredUrl(dashboard.embed_url, profile, dashboard.filter_table);
   }, [dashboard, profile, selectedObras, selectedMeses, selectedAnos]);
 
+  // Filters for SDK embed (Service Principal path)
+  const sdkFilters = useMemo<models.IBasicFilter[]>(() => {
+    if (!dashboard) return [];
+    const filters: models.IBasicFilter[] = [];
+
+    if (dashboard.filter_mode === 'page') {
+      if (selectedObras.length > 0) {
+        filters.push(buildBasicFilter('dObrasCadastradas', 'Nome Obra', selectedObras));
+      }
+      if (selectedMeses.length > 0) {
+        filters.push(buildBasicFilter('dCalendario', 'MesNome', selectedMeses.map((m) => m.toLowerCase())));
+      }
+      if (selectedAnos.length > 0) {
+        filters.push(buildBasicFilter('dCalendario', 'Ano', selectedAnos));
+      }
+    } else if (dashboard.filter_table && profile?.access_profile?.filter_level === 'obra') {
+      const obras = profile?.obras?.length ? profile.obras : (profile?.obra ? [profile.obra] : []);
+      if (obras.length > 0) {
+        filters.push(buildBasicFilter(dashboard.filter_table, 'Nome Obra', obras));
+      }
+    }
+
+    return filters;
+  }, [dashboard, profile, selectedObras, selectedMeses, selectedAnos]);
+
+  // Apply filters to embedded report when they change
+  useEffect(() => {
+    const report = reportRef.current;
+    if (report && useServicePrincipal) {
+      report.setFilters(sdkFilters).catch((err: any) => console.error('setFilters error:', err));
+    }
+  }, [sdkFilters, useServicePrincipal]);
+
   const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
 
-  const selectSingleObra = (o: string) => {
-    setSelectedObras(selectedObras.includes(o) ? [] : [o]);
-  };
-
-  const selectSingleMês = (m: string) => {
-    setSelectedMeses(selectedMeses.includes(m) ? [] : [m]);
-  };
-
-  const selectSingleAno = (a: number) => {
-    setSelectedAnos(selectedAnos.includes(a) ? [] : [a]);
-  };
+  const selectSingleObra = (o: string) => setSelectedObras(selectedObras.includes(o) ? [] : [o]);
+  const selectSingleMes = (m: string) => setSelectedMeses(selectedMeses.includes(m) ? [] : [m]);
+  const selectSingleAno = (a: number) => setSelectedAnos(selectedAnos.includes(a) ? [] : [a]);
 
   const clearAll = () => {
     setSelectedObras([]);
@@ -190,7 +261,6 @@ export default function DashboardView() {
 
   const PageFilters = dashboard.filter_mode === 'page' ? (
     <div className="flex flex-wrap items-center gap-2">
-      {/* Obras */}
       <Popover onOpenChange={(open) => !open && setObraSearch('')}>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="gap-2 max-w-[240px] truncate shadow-sm">
@@ -215,14 +285,8 @@ export default function DashboardView() {
               <p className="text-xs text-muted-foreground py-2 text-center">Nenhuma obra encontrada.</p>
             ) : (
               filteredUserObras.map((o) => (
-                <label 
-                  key={o} 
-                  className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded transition-colors"
-                >
-                  <Checkbox
-                    checked={selectedObras.includes(o)}
-                    onCheckedChange={() => selectSingleObra(o)}
-                  />
+                <label key={o} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded transition-colors">
+                  <Checkbox checked={selectedObras.includes(o)} onCheckedChange={() => selectSingleObra(o)} />
                   <span className="text-xs text-foreground font-medium line-clamp-2">{o}</span>
                 </label>
               ))
@@ -231,7 +295,6 @@ export default function DashboardView() {
         </PopoverContent>
       </Popover>
 
-      {/* Mês */}
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="gap-2 max-w-[160px] truncate shadow-sm">
@@ -244,14 +307,8 @@ export default function DashboardView() {
         <PopoverContent align="start" className="w-56 p-3 max-h-72 overflow-y-auto">
           <div className="grid grid-cols-2 gap-2">
             {MESES.map((m) => (
-              <label 
-                key={m} 
-                className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded transition-colors"
-              >
-                <Checkbox
-                  checked={selectedMeses.includes(m)}
-                  onCheckedChange={() => selectSingleMês(m)}
-                />
+              <label key={m} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded transition-colors">
+                <Checkbox checked={selectedMeses.includes(m)} onCheckedChange={() => selectSingleMes(m)} />
                 <span className="text-xs font-medium text-foreground">{m}</span>
               </label>
             ))}
@@ -259,7 +316,6 @@ export default function DashboardView() {
         </PopoverContent>
       </Popover>
 
-      {/* Ano */}
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="gap-2 max-w-[120px] truncate shadow-sm">
@@ -272,14 +328,8 @@ export default function DashboardView() {
         <PopoverContent align="start" className="w-40 p-3 max-h-72 overflow-y-auto">
           <div className="space-y-1.5">
             {ANOS.map((a) => (
-              <label 
-                key={a} 
-                className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded transition-colors"
-              >
-                <Checkbox
-                  checked={selectedAnos.includes(a)}
-                  onCheckedChange={() => selectSingleAno(a)}
-                />
+              <label key={a} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded transition-colors">
+                <Checkbox checked={selectedAnos.includes(a)} onCheckedChange={() => selectSingleAno(a)} />
                 <span className="text-xs font-medium text-foreground">{a}</span>
               </label>
             ))}
@@ -296,6 +346,64 @@ export default function DashboardView() {
     </div>
   ) : null;
 
+  const ReportEmbed = () => {
+    if (useServicePrincipal) {
+      if (embedError) {
+        return (
+          <div className="flex items-center justify-center h-full p-8 text-center">
+            <div className="max-w-lg space-y-2">
+              <p className="text-sm font-medium text-destructive">Erro ao carregar o relatório</p>
+              <p className="text-xs text-muted-foreground break-all">{embedError}</p>
+            </div>
+          </div>
+        );
+      }
+      if (!embedInfo) {
+        return (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        );
+      }
+      return (
+        <PowerBIEmbed
+          embedConfig={{
+            type: 'report',
+            id: embedInfo.reportId,
+            embedUrl: embedInfo.embedUrl,
+            accessToken: embedInfo.embedToken,
+            tokenType: models.TokenType.Embed,
+            filters: sdkFilters,
+            settings: {
+              panes: {
+                filters: { visible: false, expanded: false },
+                pageNavigation: { visible: true },
+              },
+              background: models.BackgroundType.Transparent,
+            },
+          }}
+          eventHandlers={new Map([
+            ['loaded', () => console.log('Power BI report loaded')],
+            ['rendered', () => console.log('Power BI report rendered')],
+            ['error', (event: any) => console.error('Power BI error:', event?.detail)],
+          ])}
+          cssClassName="w-full h-full"
+          getEmbeddedComponent={(embedded) => {
+            reportRef.current = embedded;
+          }}
+        />
+      );
+    }
+    return (
+      <iframe
+        src={legacyFilteredUrl}
+        className="w-full h-full border-0"
+        allowFullScreen
+        title={dashboard.name}
+      />
+    );
+  };
+
   if (isFullscreen) {
     return (
       <div className="fixed inset-0 z-50 bg-background flex flex-col">
@@ -306,12 +414,9 @@ export default function DashboardView() {
           </Button>
           {PageFilters}
         </div>
-        <iframe
-          src={filteredUrl}
-          className="flex-1 w-full border-0"
-          allowFullScreen
-          title={dashboard.name}
-        />
+        <div className="flex-1">
+          <ReportEmbed />
+        </div>
       </div>
     );
   }
@@ -331,7 +436,6 @@ export default function DashboardView() {
               )}
             </div>
           </div>
-
           <Button variant="outline" onClick={toggleFullscreen} className="flex items-center gap-2">
             <Maximize2 className="h-4 w-4" />
             Tela cheia
@@ -344,12 +448,7 @@ export default function DashboardView() {
 
         <div className="relative rounded-lg overflow-hidden border border-border shadow-card bg-card">
           <div className="aspect-video w-full">
-            <iframe
-              src={filteredUrl}
-              className="w-full h-full border-0"
-              allowFullScreen
-              title={dashboard.name}
-            />
+            <ReportEmbed />
           </div>
         </div>
       </div>
