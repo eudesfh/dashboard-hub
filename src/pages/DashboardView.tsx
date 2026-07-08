@@ -379,7 +379,7 @@ export default function DashboardView() {
                 filters: { visible: false, expanded: false },
                 pageNavigation: { visible: true },
               },
-              background: models.BackgroundType.Transparent,
+              background: models.BackgroundType.Default,
             },
           }}
           eventHandlers={new Map([
