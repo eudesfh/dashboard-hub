@@ -84,7 +84,9 @@ export type Database = {
           filter_table: string | null
           id: string
           name: string
+          report_id: string | null
           updated_at: string | null
+          workspace_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -95,7 +97,9 @@ export type Database = {
           filter_table?: string | null
           id?: string
           name: string
+          report_id?: string | null
           updated_at?: string | null
+          workspace_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -106,7 +110,9 @@ export type Database = {
           filter_table?: string | null
           id?: string
           name?: string
+          report_id?: string | null
           updated_at?: string | null
+          workspace_id?: string | null
         }
         Relationships: []
       }
