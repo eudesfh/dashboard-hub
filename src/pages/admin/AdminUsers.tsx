@@ -288,6 +288,16 @@ export default function AdminUsers() {
     } finally { setIsUpdating(false); }
   };
 
+  const handleConfirmEmail = async (user: User) => {
+    setIsUpdating(true);
+    try {
+      await callAdmin({ action: 'confirm_email', user_id: user.user_id });
+      toast({ title: 'Email confirmado', description: `${user.email} já pode fazer login.` });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: e.message });
+    } finally { setIsUpdating(false); }
+  };
+
   const submitDelete = async () => {
     if (!deleteDialog.user) return;
     setIsUpdating(true);
