@@ -129,6 +129,12 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    if (body.action === "confirm_email") {
+      await admin.auth.admin.updateUserById(body.user_id, { email_confirm: true });
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (body.action === "delete") {
       if (body.user_id === userData.user.id) {
