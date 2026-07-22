@@ -33,7 +33,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import {
   Loader2, Users, Shield, UserCheck, UserX, Plus, Search, ShieldCheck,
-  Pencil, Trash2, KeyRound,
+  Pencil, Trash2, KeyRound, MailCheck,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { LocationFields } from '@/components/register/LocationFields';
@@ -288,6 +288,16 @@ export default function AdminUsers() {
     } finally { setIsUpdating(false); }
   };
 
+  const handleConfirmEmail = async (user: User) => {
+    setIsUpdating(true);
+    try {
+      await callAdmin({ action: 'confirm_email', user_id: user.user_id });
+      toast({ title: 'Email confirmado', description: `${user.email} já pode fazer login.` });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: e.message });
+    } finally { setIsUpdating(false); }
+  };
+
   const submitDelete = async () => {
     if (!deleteDialog.user) return;
     setIsUpdating(true);
@@ -417,6 +427,9 @@ export default function AdminUsers() {
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => setPasswordDialog({ open: true, user, password: '' })} title="Alterar senha">
                           <KeyRound className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleConfirmEmail(user)} title="Confirmar email manualmente" disabled={isUpdating}>
+                          <MailCheck className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => setDeleteDialog({ open: true, user })}
                           disabled={user.user_id === currentUser?.id}

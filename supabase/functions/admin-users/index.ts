@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 interface Payload {
-  action: "create" | "update" | "delete" | "set_password";
+  action: "create" | "update" | "delete" | "set_password" | "confirm_email";
   user_id?: string;
   email?: string;
   password?: string;
@@ -125,6 +125,12 @@ Deno.serve(async (req) => {
         });
       }
       await admin.auth.admin.updateUserById(body.user_id, { password: body.password });
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (body.action === "confirm_email") {
+      await admin.auth.admin.updateUserById(body.user_id, { email_confirm: true });
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
