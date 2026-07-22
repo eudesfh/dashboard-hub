@@ -428,6 +428,9 @@ export default function AdminUsers() {
                         <Button variant="ghost" size="sm" onClick={() => setPasswordDialog({ open: true, user, password: '' })} title="Alterar senha">
                           <KeyRound className="h-4 w-4" />
                         </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleConfirmEmail(user)} title="Confirmar email manualmente" disabled={isUpdating}>
+                          <MailCheck className="h-4 w-4" />
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => setDeleteDialog({ open: true, user })}
                           disabled={user.user_id === currentUser?.id}
                           className="text-destructive hover:text-destructive" title="Excluir">
