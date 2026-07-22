@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 interface Payload {
-  action: "create" | "update" | "delete" | "set_password";
+  action: "create" | "update" | "delete" | "set_password" | "confirm_email";
   user_id?: string;
   email?: string;
   password?: string;
