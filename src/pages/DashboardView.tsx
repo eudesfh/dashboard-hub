@@ -346,7 +346,24 @@ export default function DashboardView() {
     </div>
   ) : null;
 
+  const needsObraSelection = dashboard.filter_mode === 'page' && selectedObras.length === 0;
+
   const ReportEmbed = () => {
+    if (needsObraSelection) {
+      return (
+        <div className="flex items-center justify-center h-full p-8 text-center bg-muted/30">
+          <div className="max-w-md space-y-3">
+            <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Filter className="h-6 w-6 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground">Escolha uma obra no filtro</h3>
+            <p className="text-sm text-muted-foreground">
+              Selecione ao menos uma obra acima para carregar o painel com seus dados.
+            </p>
+          </div>
+        </div>
+      );
+    }
     if (useServicePrincipal) {
       if (embedError) {
         return (
