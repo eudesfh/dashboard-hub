@@ -33,7 +33,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import {
   Loader2, Users, Shield, UserCheck, UserX, Plus, Search, ShieldCheck,
-  Pencil, Trash2, KeyRound,
+  Pencil, Trash2, KeyRound, MailCheck,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { LocationFields } from '@/components/register/LocationFields';
