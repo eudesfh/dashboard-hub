@@ -94,8 +94,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let currentUserId: string | null = null;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        const nextUserId = session?.user?.id ?? null;
+
+        // Token refresh / re-focus events for the same user must not trigger
+        // state churn — that remounts the page tree and reloads embeds.
+        if (
+          (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'INITIAL_SESSION') &&
+          nextUserId &&
+          nextUserId === currentUserId
+        ) {
+          setSession(session);
+          return;
+        }
+
+        currentUserId = nextUserId;
         setSession(session);
         setUser(session?.user ?? null);
 
@@ -115,7 +131,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      currentUserId = session?.user?.id ?? null;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -123,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setIsLoading(false);
     });
+
 
     return () => subscription.unsubscribe();
   }, []);
