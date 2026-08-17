@@ -348,7 +348,7 @@ export default function DashboardView() {
 
   const needsObraSelection = dashboard.filter_mode === 'page' && selectedObras.length === 0;
 
-  const ReportEmbed = () => {
+  const renderEmbed = () => {
     if (needsObraSelection) {
       return (
         <div className="flex items-center justify-center h-full p-8 text-center bg-muted/30">
@@ -432,7 +432,7 @@ export default function DashboardView() {
           {PageFilters}
         </div>
         <div className="flex-1">
-          <ReportEmbed />
+          {renderEmbed()}
         </div>
       </div>
     );
@@ -465,7 +465,7 @@ export default function DashboardView() {
 
         <div className="relative rounded-lg overflow-hidden border border-border shadow-card bg-card">
           <div className="aspect-video w-full">
-            <ReportEmbed />
+            {renderEmbed()}
           </div>
         </div>
       </div>
